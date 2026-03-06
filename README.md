@@ -48,6 +48,13 @@ python main.py
 ```batch
 start.bat
 ```
+### Windows 单文件启动（无需下载项目，直接执行单文件）
+
+下载最新版
+
+https://github.com/Code847/frp-manager/releases
+点击运行，右下角（时钟角表旁）会有程序，包括启动停止退出等
+
 
 ## 📁 项目结构
 
