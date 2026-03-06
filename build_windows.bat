@@ -1,39 +1,49 @@
 @echo off
 chcp 65001 >nul
-title FRP Manager 打包工具
+setlocal enabledelayedexpansion
 
 echo ================================================
-echo       FRP Manager - Windows 打包工具
+echo       FRP Manager - Windows Build Script
 echo ================================================
 echo.
 
-:: 检查Python
 python --version >nul 2>&1
 if errorlevel 1 (
-    echo [错误] 未检测到Python，请先安装Python 3.7+
+    echo [ERROR] Python not found
     pause
     exit /b 1
 )
 
-:: 检查PyInstaller
-python -c "import PyInstaller" 2>nul
+echo [INFO] Installing dependencies...
+python -m pip install pyinstaller pystray Pillow requests psutil flask -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com --quiet
+
 if errorlevel 1 (
-    echo [信息] 正在安装PyInstaller...
-    python -m pip install pyinstaller
+    echo [ERROR] Failed to install dependencies, trying without mirror...
+    python -m pip install pyinstaller pystray Pillow requests psutil flask --quiet
 )
 
-:: 打包
-echo [信息] 开始打包...
-python -m PyInstaller frp_manager.spec --noconfirm
+echo [INFO] Ensuring temp directory exists...
+if not exist "temp" mkdir temp
 
-if exist "dist\FRP-Manager.exe" (
-    echo.
-    echo [成功] 打包完成！
-    echo [位置] dist\FRP-Manager.exe
-    echo [大小] %~z0 bytes
+echo [INFO] Building FRP-Manager...
+python build_exe.py
+
+if exist "dist\FRP-Manager*" (
+    for /d %%d in (dist\FRP-Manager-*) do (
+        if exist "%%d\FRP-Manager-*.exe" (
+            echo.
+            echo [INFO] Creating temp directory in package...
+            if not exist "%%d\_internal\temp" mkdir "%%d\_internal\temp"
+            
+            echo.
+            echo ================================================
+            echo [SUCCESS] Build complete!
+            for /f "tokens=*" %%f in ('dir /b "%%d\*.exe"') do echo [FILE] %%d\%%f
+            echo ================================================
+        )
+    )
 ) else (
-    echo [错误] 打包失败
+    echo [ERROR] Build failed, check errors above
 )
 
-echo.
 pause

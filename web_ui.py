@@ -11,13 +11,34 @@ from frp_manager import FRPManager
 
 app = Flask(__name__)
 
-# 配置
+# 获取正确的程序目录
+if getattr(sys, 'frozen', False):
+    base_dir = os.path.join(os.path.dirname(sys.executable), '_internal')
+else:
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 配置 - 优先从配置文件读取端口
+def load_web_port():
+    """从配置文件加载Web端口"""
+    config_dir = os.path.join(base_dir, 'configs')
+    port_file = os.path.join(config_dir, 'web_port.ini')
+    if os.path.exists(port_file):
+        try:
+            with open(port_file, 'r') as f:
+                for line in f:
+                    if line.strip().startswith('port'):
+                        port = int(line.split('=')[1].strip())
+                        return port
+        except:
+            pass
+    return 5000
+
 config = {
-    'WEB_PORT': 5000,
-    'FRP_BIN_DIR': os.path.join(os.path.dirname(__file__), 'bin'),
-    'FRP_CONFIG_DIR': os.path.join(os.path.dirname(__file__), 'configs'),
-    'FRP_LOG_DIR': os.path.join(os.path.dirname(__file__), 'logs'),
-    'TEMP_DIR': os.path.join(os.path.dirname(__file__), 'temp')
+    'WEB_PORT': load_web_port(),
+    'FRP_BIN_DIR': os.path.join(base_dir, 'bin'),
+    'FRP_CONFIG_DIR': os.path.join(base_dir, 'configs'),
+    'FRP_LOG_DIR': os.path.join(base_dir, 'logs'),
+    'TEMP_DIR': os.path.join(base_dir, 'temp')
 }
 
 # 创建必要的目录
@@ -518,6 +539,18 @@ HTML_TEMPLATE = '''
             </div>
             
             <div class="section">
+                <h2>Web设置</h2>
+                <div class="form-group">
+                    <label>Web端口:</label>
+                    <input type="number" id="webPort" placeholder="1024-65535" value="5000" min="1024" max="65535">
+                </div>
+                <div class="control-group">
+                    <button id="savePortBtn" class="btn btn-primary">保存端口</button>
+                </div>
+                <p style="font-size:0.8em;color:#666;margin-top:5px;">修改端口后需重启应用生效</p>
+            </div>
+            
+            <div class="section">
                 <h2>配置编辑器</h2>
                 <div class="form-group">
                     <label>配置类型:</label>
@@ -845,6 +878,25 @@ def config(config_type):
             return jsonify({'success': True, 'message': '配置保存成功', 'file': saved_file})
         else:
             return jsonify({'success': False, 'message': '配置保存失败'}), 500
+
+@app.route('/api/settings', methods=['GET', 'POST'])
+def settings():
+    """Web端口设置API"""
+    if request.method == 'GET':
+        return jsonify({'web_port': config['WEB_PORT']})
+    elif request.method == 'POST':
+        new_port = request.form.get('port', type=int)
+        if new_port and 1024 <= new_port <= 65535:
+            config['WEB_PORT'] = new_port
+            # 保存到配置文件
+            config_dir = os.path.join(os.path.dirname(__file__), 'configs')
+            os.makedirs(config_dir, exist_ok=True)
+            port_file = os.path.join(config_dir, 'web_port.ini')
+            with open(port_file, 'w') as f:
+                f.write(f'port = {new_port}\n')
+            return jsonify({'success': True, 'message': f'端口已修改为 {new_port}，请重启应用', 'port': new_port})
+        else:
+            return jsonify({'success': False, 'message': '端口无效，请使用1024-65535之间的端口'}), 400
 
 @app.route('/api/start', methods=['POST'])
 def start():

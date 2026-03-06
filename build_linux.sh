@@ -1,32 +1,62 @@
 #!/bin/bash
 # FRP Manager Linux 打包脚本
-# 在Linux系统上运行此脚本生成可执行文件
 
-echo "开始打包FRP Manager for Linux..."
+echo "================================================"
+echo "       FRP Manager - Linux Build Script"
+echo "================================================"
+echo
 
-# 安装依赖
-pip install pyinstaller
+# 检查 Python
+if ! command -v python3 &> /dev/null; then
+    echo "[ERROR] Python not found"
+    exit 1
+fi
 
-# 打包
-pyinstaller --name=frp-manager \
+echo "[INFO] Installing dependencies..."
+pip3 install pyinstaller pystray Pillow requests psutil flask
+
+echo "[INFO] Cleaning old builds..."
+rm -rf dist build
+
+echo "[INFO] Ensuring temp directory exists..."
+mkdir -p temp
+
+echo "[INFO] Building FRP-Manager..."
+pyinstaller --name=FRP-Manager \
     --onedir \
-    --console=False \
+    --console \
     --add-data "web_ui.py:." \
     --add-data "frp_manager.py:." \
+    --add-data "system_tray.py:." \
     --add-data "configs:configs" \
     --add-data "static:static" \
     --add-data "bin:bin" \
+    --add-data "temp:temp" \
     --hidden-import=requests \
     --hidden-import=psutil \
     --hidden-import=flask \
-    --hidden-import=gevent \
     --hidden-import=markupsafe \
     --hidden-import=jinja2 \
     --hidden-import=werkzeug \
     --hidden-import=click \
     --hidden-import=itsdangerous \
     --hidden-import=blinker \
+    --hidden-import=pystray \
+    --hidden-import=PIL \
+    --hidden-import=Pillow \
+    --noconfirm \
     main.py
 
-echo "打包完成！"
-echo "可执行文件位置: dist/frp-manager/frp-manager"
+if [ -f "dist/FRP-Manager/FRP-Manager" ]; then
+    echo
+    echo "[INFO] Creating temp directory in package..."
+    mkdir -p "dist/FRP-Manager/_internal/temp"
+    
+    echo
+    echo "================================================"
+    echo "[SUCCESS] Build complete!"
+    echo "[FILE] dist/FRP-Manager/FRP-Manager"
+    echo "================================================"
+else
+    echo "[ERROR] Build failed"
+fi
