@@ -101,6 +101,7 @@ remote_port = 远程端口
 ```
 
 ## 📱 界面预览
+<img width="1026" height="768" alt="ScreenShot_2026-03-05_163550_608" src="https://github.com/user-attachments/assets/08f1681c-ace5-4a56-a159-8d4cc2caf862" />
 
 ### 桌面端
 - 三列状态卡片
