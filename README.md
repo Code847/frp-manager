@@ -50,10 +50,12 @@ start.bat
 ```
 ### Windows 单文件启动（无需下载项目，直接执行单文件）
 
-下载最新版
+请下载最新版：
 
 https://github.com/Code847/frp-manager/releases
-点击运行，右下角（时钟角表旁）会有程序，包括启动停止退出等
+# 点击运行，右下角（时钟角表旁）会有程序，包括启动停止退出等
+# 注：文件会自动生成配置目录和执行目录
+
 
 
 ## 📁 项目结构
@@ -66,7 +68,7 @@ frp-manager/
 ├── requirements.txt     # Python依赖
 ├── start.bat            # Windows启动脚本
 ├── README.md            # 项目说明
-├── bin/                 # FRP二进制文件
+├── bin/                 # FRP二进制文件(可从frp官网下载最新的替换)
 │   ├── frpc_windows_amd64.exe
 │   └── frps_windows_amd64.exe
 ├── configs/             # 配置文件目录
@@ -130,10 +132,12 @@ remote_port = 远程端口
 - Web界面管理
 - 一键启动/停止
 - 响应式设计
+- 支持端口修改（修改后需要重启）
 
 ## 🤝 贡献指南
 
 欢迎提交 Issue 和 Pull Request！
+哈哈哈
 
 ## 📄 许可证
 
