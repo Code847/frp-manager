@@ -1,0 +1,27 @@
+# 旧版 Python（3.6 + ARM aarch64 专用）依赖清单
+#
+# 为什么不用 Flask 2.x / MarkupSafe 2.x：
+#   ARM aarch64 上 Python 3.6 既没有 MarkupSafe 2.x 的预编译 wheel，
+#   强制从源码编译时，MarkupSafe 2.0.x 的 setup.py 会在构建阶段自引用
+#   `import markupsafe` 取版本号而失败（ModuleNotFoundError）。
+#   而 2.1.0+ 又要求 Python >= 3.7，所以 3.6 + aarch64 是「无解区间」。
+#
+# 解决办法：整条链路降到 Flask 1.1.x 这一代「几乎全是纯 Python wheel」的版本：
+#   Flask / Werkzeug / Jinja2 / itsdangerous / click / requests 都是
+#   py2.py3-none-any 通用 wheel，任何架构（含 aarch64）都能直接装上；
+#   只有 MarkupSafe 与 psutil 需要本地编译 C 扩展，且其 1.1.1 版 setup.py
+#   通过「读取文件」取版本号，可在 py3.6 正常编译（需 gcc + python3-dev）。
+#
+# 运行逻辑对 Flask 1.1 与 3.x 均兼容，无需改代码。
+Flask==1.1.4
+Werkzeug==1.0.1
+Jinja2==2.11.3
+MarkupSafe==1.1.1
+itsdangerous==1.1.0
+click==7.1.2
+requests==2.27.1
+psutil==5.9.8
+
+# 系统托盘依赖：仅 Windows 桌面需要（ARM 服务器不会安装）
+pystray>=0.19.5; sys_platform == "win32"
+Pillow>=10.0; sys_platform == "win32"

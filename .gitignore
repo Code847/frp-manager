@@ -6,6 +6,7 @@ __pycache__/
 .Python
 venv/
 env/
+.testlibs/
 *.egg-info/
 dist/
 build/
@@ -27,3 +28,15 @@ temp/
 # OS
 .DS_Store
 Thumbs.db
+
+# === frp 二进制（约 143MB）===
+# 仓库不收录可执行文件，克隆后执行 `python download_frp.py`
+# 或在面板「系统设置 → FRP 版本控制」中一键下载
+bin/
+
+# === 运行时配置与密钥（含口令哈希，禁止入库）===
+configs/*
+!configs/README.md
+
+# 本地数据目录（DATA_DIR 可能指向项目外，此处兜底）
+data/
