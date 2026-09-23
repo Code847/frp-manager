@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FRP Manager · 登录</title>
+<style>
+:root{
+  --txt:#e8f0fb; --txt2:#9db1cd; --txt3:#6b81a1;
+  --accent:#22d3ee; --accent2:#6366f1;
+  --panel:rgba(9,16,30,.58); --line:rgba(130,185,240,.16);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:#03060f;color:var(--txt);overflow:hidden;
+  font-family:"Inter","Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+  font-size:13.5px;-webkit-font-smoothing:antialiased}
+.ic{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+#scene{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block}
+.vignette{position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse 120% 90% at 50% 45%,transparent 45%,rgba(2,5,12,.55) 100%),
+             linear-gradient(90deg,rgba(2,5,12,.55),transparent 30%,transparent 70%,rgba(2,5,12,.5))}
+.flash{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0;
+  background:linear-gradient(100deg,transparent 40%,rgba(255,255,255,.14) 50%,transparent 60%)}
+.flash.go{animation:sweep .9s ease-out}
+@keyframes sweep{0%{opacity:0;transform:translateX(-40%)}30%{opacity:1}100%{opacity:0;transform:translateX(40%)}}
+
+.stage{position:relative;z-index:3;height:100%;display:flex;flex-direction:column;
+  padding:22px 42px 18px;animation:rise .9s cubic-bezier(.22,1,.36,1)}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+.top{display:flex;align-items:center;justify-content:space-between;flex:none}
+.brand{display:flex;align-items:center;gap:11px}
+.brand-mark{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;
+  background:rgba(255,255,255,.05);border:1px solid rgba(160,210,255,.26);
+  box-shadow:0 0 22px rgba(34,211,238,.2),inset 0 0 14px rgba(34,211,238,.08)}
+.brand-text h1{font-size:16px;letter-spacing:2.6px;font-weight:700;color:#eaf6ff}
+.brand-text h1 span{color:var(--accent);opacity:.85}
+.brand-text p{font-size:10.5px;color:var(--txt3);letter-spacing:1.4px;margin-top:2px}
+.top-right{display:flex;align-items:center;gap:14px;font-size:11.5px;color:var(--txt2)}
+.secure{display:flex;align-items:center;gap:7px;padding:6px 12px;border-radius:20px;
+  background:rgba(10,20,38,.5);border:1px solid var(--line);backdrop-filter:blur(8px)}
+.pulse{width:6px;height:6px;border-radius:50%;background:#34d399;box-shadow:0 0 8px #34d399;animation:pl 2s infinite}
+@keyframes pl{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}70%{box-shadow:0 0 0 8px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
+.ver{font-family:Consolas,monospace;color:var(--txt3)}
+
+.wrap{flex:1;display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;
+  max-width:1240px;width:100%;margin:0 auto;padding:10px 0}
+.intro{max-width:520px}
+.phase-pill{display:inline-flex;align-items:center;gap:9px;padding:6px 14px 6px 10px;border-radius:22px;
+  background:rgba(10,20,38,.5);border:1px solid var(--line);backdrop-filter:blur(10px);
+  font-size:11px;color:var(--txt3);letter-spacing:1.2px;margin-bottom:22px}
+.phase-pill b{color:var(--accent);font-size:12.5px;letter-spacing:.5px;font-weight:600}
+.p-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 10px var(--accent);animation:pl 2.4s infinite}
+.title{font-size:44px;line-height:1.24;font-weight:700;letter-spacing:-.5px;margin-bottom:18px;
+  text-shadow:0 4px 30px rgba(0,0,0,.45)}
+.title #titleAcc{background:linear-gradient(100deg,var(--accent),#a5b4fc);-webkit-background-clip:text;background-clip:text;color:transparent}
+.desc{font-size:13.5px;line-height:1.85;color:var(--txt2);margin-bottom:24px}
+.feat{list-style:none;margin-bottom:30px}
+.feat li{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--txt2);padding:6px 0}
+.feat i{width:16px;height:16px;flex:none;border-radius:5px;position:relative;
+  border:1px solid var(--line);background:rgba(34,211,238,.08)}
+.feat i::after{content:"";position:absolute;left:4.5px;top:2.5px;width:5px;height:8px;
+  border-right:1.6px solid var(--accent);border-bottom:1.6px solid var(--accent);transform:rotate(42deg)}
+
+.clock-box{display:flex;gap:22px;align-items:center;padding:16px 20px;border-radius:14px;
+  background:rgba(9,16,30,.45);border:1px solid var(--line);backdrop-filter:blur(14px)}
+.cb-left b{display:block;font-size:30px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:1px;
+  text-shadow:0 0 24px rgba(34,211,238,.28)}
+.cb-left small{font-size:11px;color:var(--txt3)}
+.cb-right{flex:1;min-width:0}
+.cb-row{display:flex;justify-content:space-between;font-size:11px;color:var(--txt3);margin-bottom:8px}
+.cb-row.small{margin:7px 0 0;font-size:10.5px}
+.day-bar{height:4px;border-radius:4px;background:rgba(255,255,255,.08);position:relative;overflow:visible}
+.day-bar u{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),var(--accent2));
+  box-shadow:0 0 12px rgba(34,211,238,.45);transition:width .6s}
+.day-bar em{position:absolute;top:-3px;width:10px;height:10px;border-radius:50%;background:#fff;
+  box-shadow:0 0 12px var(--accent);transition:left .6s;transform:translateX(-5px)}
+
+.card{position:relative;width:100%;max-width:406px;justify-self:end;border-radius:20px;padding:1px;
+  background:linear-gradient(155deg,rgba(160,210,255,.28),rgba(120,170,230,.06) 45%,rgba(160,210,255,.16));
+  box-shadow:0 30px 70px rgba(0,0,0,.5),0 0 50px rgba(34,211,238,.08)}
+.card-inner{position:relative;border-radius:19px;padding:30px 30px 26px;overflow:hidden;
+  background:linear-gradient(160deg,rgba(9,17,32,.82),rgba(12,21,38,.66));backdrop-filter:blur(24px)}
+.card-inner::before{content:"";position:absolute;top:0;left:24px;right:24px;height:1px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);opacity:.65}
+.card-inner::after{content:"";position:absolute;bottom:0;right:0;width:34px;height:34px;
+  border-right:1px solid rgba(160,210,255,.3);border-bottom:1px solid rgba(160,210,255,.3);
+  border-bottom-right-radius:19px;pointer-events:none}
+.card-head{margin-bottom:22px}
+.card-head h3{font-size:19px;font-weight:600;letter-spacing:.5px}
+.card-head p{font-size:11.5px;color:var(--txt3);margin-top:5px}
+
+.field{display:block;margin-bottom:15px}
+.fl{display:block;font-size:11.5px;color:var(--txt2);margin-bottom:7px;letter-spacing:.3px}
+.ipt{display:flex;align-items:center;gap:10px;height:44px;padding:0 13px;border-radius:11px;
+  background:rgba(5,11,22,.5);border:1px solid var(--line);transition:all .24s}
+.ipt:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px rgba(34,211,238,.1);background:rgba(5,11,22,.72)}
+.ipt .ic{color:var(--txt3);width:16px;height:16px}
+.ipt:focus-within .ic{color:var(--accent)}
+.ipt input{flex:1;min-width:0;background:none;border:none;outline:none;color:var(--txt);
+  font-size:13.5px;font-family:inherit}
+.ipt input::placeholder{color:#5b749a}
+.err{display:none;font-size:11px;color:#fca5a5;margin-top:6px;font-style:normal}
+.err.show{display:block;animation:fadeUp .3s}
+.field.bad .ipt{border-color:rgba(248,113,113,.6);box-shadow:0 0 0 3px rgba(248,113,113,.1)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+
+.eye{background:none;border:none;color:var(--txt3);cursor:pointer;padding:2px;display:grid;place-items:center}
+.eye:hover{color:var(--accent)}
+.captcha-row .ipt{gap:8px}
+.captcha-row input{max-width:150px}
+#capImg{width:112px;height:38px;border-radius:9px;cursor:pointer;flex:none;
+  border:1px solid var(--line);background:rgba(255,255,255,.04)}
+#capImg:active{transform:scale(.97)}
+#capSpin{width:112px;height:38px;border-radius:9px;flex:none;display:none;place-items:center;
+  border:1px dashed var(--line);color:var(--txt3);font-size:11px}
+
+.row-between{display:flex;align-items:center;justify-content:space-between;margin:6px 0 20px}
+.remember{display:flex;align-items:center;gap:9px;cursor:pointer;font-size:12px;color:var(--txt2);user-select:none}
+.remember input{display:none}
+.tick{width:16px;height:16px;border-radius:5px;border:1px solid var(--line);background:rgba(5,11,22,.6);
+  position:relative;flex:none;transition:all .22s}
+.remember input:checked + .tick{background:var(--accent);border-color:var(--accent);box-shadow:0 0 10px rgba(34,211,238,.4)}
+.remember input:checked + .tick::after{content:"";position:absolute;left:5px;top:2px;width:4px;height:7px;
+  border-right:1.8px solid #04121a;border-bottom:1.8px solid #04121a;transform:rotate(42deg)}
+.forgot{font-size:12px;color:var(--accent);cursor:pointer;text-decoration:none;opacity:.85}
+.forgot:hover{opacity:1;text-decoration:underline}
+
+.submit{position:relative;width:100%;height:46px;border:none;border-radius:12px;cursor:pointer;
+  font-family:inherit;font-size:14px;font-weight:600;letter-spacing:3px;color:#04121a;overflow:hidden;
+  background:linear-gradient(100deg,var(--accent),var(--accent2));
+  box-shadow:0 10px 28px rgba(34,211,238,.24);transition:all .26s}
+.submit:hover{filter:brightness(1.08);box-shadow:0 14px 34px rgba(34,211,238,.34)}
+.submit:active{transform:translateY(1px)}
+.sb-arrow{position:absolute;right:18px;top:50%;transform:translateY(-50%);width:18px;height:18px;
+  fill:none;stroke:currentColor;stroke-width:2;opacity:0;transition:all .3s}
+.submit:hover .sb-arrow{opacity:1;right:14px}
+.sb-load{display:none;font-size:13px;letter-spacing:1px}
+.sb-load i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:7px;vertical-align:-1px;
+  border:2px solid rgba(4,18,26,.3);border-top-color:#04121a;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.submit.loading .sb-txt,.submit.loading .sb-arrow{display:none}
+.submit.loading .sb-load{display:inline-block}
+
+.demo-tip{text-align:center;font-size:11px;color:var(--txt3);margin-top:14px}
+.demo-tip b{color:var(--accent);font-weight:600;font-family:Consolas,monospace}
+.demo-tip .warn{color:#fbbf24}
+
+.divider{display:flex;align-items:center;gap:12px;margin:18px 0 14px;font-size:10.5px;color:var(--txt3)}
+.divider::before,.divider::after{content:"";flex:1;height:1px;background:var(--line)}
+.sso{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.sso button{display:flex;flex-direction:column;align-items:center;gap:6px;padding:11px 4px;cursor:pointer;
+  border-radius:11px;background:rgba(255,255,255,.035);border:1px solid var(--line);color:var(--txt2);
+  font-size:10.5px;font-family:inherit;transition:all .24s}
+.sso button:hover{color:var(--accent);border-color:var(--accent);background:rgba(34,211,238,.09);transform:translateY(-2px)}
+.sso .ic{width:18px;height:18px}
+
+.done{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;background:linear-gradient(160deg,rgba(9,17,32,.96),rgba(12,21,38,.92));backdrop-filter:blur(24px);
+  border-radius:19px;z-index:5}
+.card.ok .done{display:flex;animation:fadeUp .4s}
+.card.ok .card-head,.card.ok form,.card.ok .divider,.card.ok .sso,.card.ok .demo-tip{opacity:.12;transition:opacity .3s}
+.done-ring{width:74px;height:74px;display:grid;place-items:center}
+.done-ring svg{width:100%;height:100%;fill:none;stroke:var(--accent);stroke-width:2}
+.done-ring circle{stroke-dasharray:164;stroke-dashoffset:164;animation:ring .7s ease forwards;opacity:.4}
+.done-ring path{stroke-dasharray:40;stroke-dashoffset:40;animation:ring .5s .5s ease forwards}
+@keyframes ring{to{stroke-dashoffset:0}}
+.done b{font-size:15px;letter-spacing:1px}
+.done p{font-size:11.5px;color:var(--txt3)}
+.done-bar{width:170px;height:3px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:4px}
+.done-bar u{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2));
+  animation:fill 1.6s .5s ease forwards}
+@keyframes fill{to{width:100%}}
+
+.bottom{flex:none;display:flex;align-items:center;justify-content:space-between;
+  font-size:11px;color:var(--txt3);padding-top:6px}
+.b-links{display:flex;align-items:center;gap:9px}
+.b-links a{cursor:pointer;transition:color .2s}
+.b-links a:hover{color:var(--accent)}
+.b-links i{font-style:normal;opacity:.4}
+
+@keyframes shake{
+  10%,90%{transform:translateX(-2px)}20%,80%{transform:translateX(3px)}
+  30%,50%,70%{transform:translateX(-6px)}40%,60%{transform:translateX(6px)}
+}
+.card.shake{animation:shake .55s cubic-bezier(.36,.07,.19,.97)}
+
+.toast{position:fixed;top:26px;left:50%;transform:translate(-50%,-16px);z-index:20;
+  background:rgba(10,18,34,.94);border:1px solid var(--line);color:var(--txt);
+  padding:10px 20px;border-radius:11px;font-size:12.5px;opacity:0;pointer-events:none;
+  box-shadow:0 14px 40px rgba(0,0,0,.5);transition:all .34s cubic-bezier(.22,1,.36,1)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+
+@media (max-width:1080px){
+  .wrap{grid-template-columns:1fr;gap:34px;justify-items:center;text-align:center;padding:0}
+  .intro{max-width:none;display:flex;flex-direction:column;align-items:center}
+  .card{justify-self:center}
+  .feat li{justify-content:center}
+}
+@media (max-width:720px){
+  .stage{padding:16px 18px 12px}
+  .title{font-size:32px}
+  .clock-box{flex-direction:column;align-items:stretch;gap:14px}
+  .top-right .secure{display:none}
+  .bottom{flex-direction:column;gap:6px}
+}
+</style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+<div class="vignette"></div>
+<div class="flash" id="flash"></div>
+
+<div class="stage">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark">
+        <svg class="ic" style="width:20px;height:20px;color:#22d3ee" viewBox="0 0 24 24">
+          <path d="M12 2 4 6v6c0 5 3.4 9.2 8 10 4.6-.8 8-5 8-10V6l-8-4z"/>
+          <path d="M9 12l2 2 4-4"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>FRP<span>MANAGER</span></h1>
+        <p>跨平台 FRP 管理控制台</p>
+      </div>
+    </div>
+    <div class="top-right">
+      <div class="secure"><span class="pulse"></span>本地会话 · 已签名</div>
+      <span class="ver">v1.1</span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="intro">
+      <div class="phase-pill"><span class="p-dot"></span>FRP MANAGER · <b>SECURE ACCESS</b></div>
+      <h2 class="title">内网穿透<br><span id="titleAcc">统一控制台</span></h2>
+      <p class="desc">在一台机器上同时管理 frpc 客户端与 frps 服务端：运行状态、端口映射、
+        服务端 dashboard 指标、二进制版本更新，全部集中在一处。</p>
+      <ul class="feat">
+        <li><i></i>运行状态实时刷新，frpc / frps 双进程独立启停</li>
+        <li><i></i>端口映射与服务端 API 自动识别、一键探测连通性</li>
+        <li><i></i>frpc / frps 版本检测与在线下载替换</li>
+        <li><i></i>账号密码写进配置文件，图形验证码可随时开关</li>
+      </ul>
+      <div class="clock-box">
+        <div class="cb-left">
+          <b id="bigClock">--:--:--</b>
+          <small id="todayStr">—</small>
+        </div>
+        <div class="cb-right">
+          <div class="cb-row"><span>今日已过</span><span id="dayPct">0%</span></div>
+          <div class="day-bar"><u id="dayFill"></u><em id="dayHead"></em></div>
+          <div class="cb-row small"><span id="nextTip">未通过认证时，所有页面与接口都会被拒绝访问</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card" id="card">
+      <div class="card-inner">
+        <div class="card-head">
+          <h3>控制台登录</h3>
+          <p>请输入账号与密码{% if captcha_on %} 以及右侧验证码{% endif %}</p>
+        </div>
+
+        <form id="loginForm" autocomplete="off">
+          <input type="hidden" id="nextUrl" value="{{ next }}">
+
+          <label class="field" id="fUser">
+            <span class="fl">账号</span>
+            <span class="ipt">
+              <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
+              <input id="user" name="user" placeholder="请输入账号" autocomplete="username" spellcheck="false">
+            </span>
+            <span class="err" id="errUser"></span>
+          </label>
+
+          <label class="field" id="fPwd">
+            <span class="fl">密码</span>
+            <span class="ipt">
+              <svg class="ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
+              <input id="pwd" name="pwd" type="password" placeholder="请输入密码" autocomplete="current-password">
+              <button class="eye" id="eyeBtn" type="button" aria-label="显示密码">
+                <svg class="ic" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </span>
+            <span class="err" id="errPwd"></span>
+          </label>
+
+          {% if captcha_on %}
+          <div class="field captcha-row" id="fCode">
+            <span class="fl">验证码</span>
+            <span class="ipt">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 15l2-4 2 2 2-3 2 5"/></svg>
+              <input id="code" name="code" maxlength="4" placeholder="4 位字符" autocomplete="off">
+              <img id="capImg" src="/api/captcha?t=0" alt="验证码" title="点击换一张">
+              <span id="capSpin">加载中</span>
+            </span>
+            <span class="err" id="errCode"></span>
+          </div>
+          {% endif %}
+
+          <div class="row-between">
+            <label class="remember">
+              <input type="checkbox" id="remember"><span class="tick"></span>
+              <span>记住此设备 {{ remember_days }} 天</span>
+            </label>
+            <a class="forgot" id="forgot">忘记密码？</a>
+          </div>
+
+          <button class="submit" id="submitBtn" type="submit">
+            <span class="sb-txt">登 录</span>
+            <span class="sb-load"><i></i>验证中</span>
+            <svg class="sb-arrow" viewBox="0 0 24 24"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
+          </button>
+        </form>
+
+        <div class="divider">提示</div>
+        <div class="sso">
+          <button type="button" data-tip="账号密码保存在服务端本地配置文件中，改完立刻生效">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>
+            <span>本地凭证</span>
+          </button>
+          <button type="button" data-tip="captcha = true / false 即可开关图形验证码">
+            <svg class="ic" viewBox="0 0 24 24"><path d="M12 3l8 4v6c0 5-3.4 8.6-8 9-4.6-.4-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
+            <span>验证码开关</span>
+          </button>
+          <button type="button" data-tip="enabled = false 可直接关闭整套登录保护">
+            <svg class="ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></svg>
+            <span>免登录模式</span>
+          </button>
+        </div>
+
+        <p class="demo-tip">
+          {% if default_pwd %}<span class="warn">当前仍使用出厂默认口令，登录后请在「配置与下载 → Web 设置」里尽快修改</span>
+          {% else %}会话使用服务端签名 Cookie 保存，勾选「记住此设备」可保留多天{% endif %}
+        </p>
+
+        <div class="done" id="done">
+          <div class="done-ring">
+            <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="26"/><path d="M19 31l8 8 15-16"/></svg>
+          </div>
+          <b>登录成功</b>
+          <p id="doneTip">正在进入控制台...</p>
+          <div class="done-bar"><u></u></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="bottom">
+    <span>© FRP Manager · 基于 Flask 构建</span>
+    <div class="b-links">
+      <a data-open="help">忘记密码</a><i>·</i>
+      <a data-open="file">会话说明</a><i>·</i>
+      <a data-open="local">本地访问</a>
+    </div>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function () {
+  var $ = function (s) { return document.querySelector(s); };
+  var rnd = function (a, b) { return a + Math.random() * (b - a); };
+
+  /* ---------- Toast ---------- */
+  var toastTimer = null;
+  function toast(msg) {
+    var el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('show'); }, 2600);
+  }
+
+  /* ---------- 背景：星点 + 粒子连线 ---------- */
+  var cv = $('#scene'), ctx = cv.getContext('2d');
+  var W = 0, H = 0, PTS = [], STARS = [];
+  function resize() {
+    var dpr = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    cv.style.width = W + 'px'; cv.style.height = H + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function build() {
+    STARS = [];
+    for (var i = 0; i < 220; i++) STARS.push({ x: Math.random(), y: Math.random() * .78, r: rnd(.4, 1.6), ph: rnd(0, 6.3), sp: rnd(.6, 2) });
+    PTS = [];
+    var n = Math.max(30, Math.min(90, Math.round(W * H / 18000)));
+    for (var j = 0; j < n; j++) PTS.push({ x: rnd(0, W), y: rnd(0, H * .84), vx: rnd(-.22, .22), vy: rnd(-.16, .16), r: rnd(.8, 2) });
+  }
+  resize(); build();
+  window.addEventListener('resize', function () { resize(); build(); });
+
+  var t0 = Date.now();
+  function frame() {
+    var t = (Date.now() - t0) / 1000;
+    var g = ctx.createLinearGradient(0, 0, W * .5, H);
+    g.addColorStop(0, '#04091a'); g.addColorStop(.55, '#061021'); g.addColorStop(1, '#03060f');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+
+    // 星空
+    for (var i = 0; i < STARS.length; i++) {
+      var s = STARS[i], a = .18 + .42 * (Math.sin(t * s.sp + s.ph) * .5 + .5);
+      ctx.beginPath(); ctx.arc(s.x * W, s.y * H, s.r, 0, 6.284);
+      ctx.fillStyle = 'rgba(190,225,255,' + a.toFixed(3) + ')'; ctx.fill();
+    }
+    // 地平线光带
+    var gg = ctx.createRadialGradient(W * .5, H * .92, 0, W * .5, H * .92, W * .7);
+    gg.addColorStop(0, 'rgba(34,211,238,.10)'); gg.addColorStop(1, 'rgba(34,211,238,0)');
+    ctx.fillStyle = gg; ctx.fillRect(0, 0, W, H);
+
+    // 粒子 + 连线
+    for (var k = 0; k < PTS.length; k++) {
+      var p = PTS[k];
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > W) p.vx *= -1;
+      if (p.y < 0 || p.y > H * .84) p.vy *= -1;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.284);
+      ctx.fillStyle = 'rgba(34,211,238,.5)'; ctx.fill();
+      for (var m = k + 1; m < PTS.length; m++) {
+        var q = PTS[m], dx = p.x - q.x, dy = p.y - q.y, d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 120) {
+          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+          ctx.strokeStyle = 'rgba(120,180,240,' + (.14 * (1 - d / 120)).toFixed(3) + ')';
+          ctx.lineWidth = 1; ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  /* ---------- 时钟 ---------- */
+  var WK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function clock() {
+    var d = new Date();
+    $('#bigClock').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+    $('#todayStr').textContent = d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' + WK[d.getDay()];
+    var pct = (d.getHours() * 60 + d.getMinutes()) / 1440 * 100;
+    $('#dayFill').style.width = pct.toFixed(2) + '%';
+    $('#dayHead').style.left = pct.toFixed(2) + '%';
+    $('#dayPct').textContent = pct.toFixed(1) + '%';
+  }
+  clock(); setInterval(clock, 1000);
+
+  /* ---------- 错误提示 ---------- */
+  function setErr(sel, msg) {
+    var box = document.querySelector(sel);
+    if (!box) return;
+    box.textContent = msg || '';
+    box.classList.toggle('show', !!msg);
+    var f = box.closest('.field');
+    if (f) f.classList.toggle('bad', !!msg);
+  }
+  function clearErrs() { setErr('#errUser', ''); setErr('#errPwd', ''); setErr('#errCode', ''); }
+
+  /* ---------- 验证码 ---------- */
+  var capImg = $('#capImg'), capSpin = $('#capSpin');
+  function refreshCap() {
+    if (!capImg) return;
+    capImg.style.display = 'none';
+    if (capSpin) capSpin.style.display = 'grid';
+    capImg.src = '/api/captcha?t=' + Date.now();
+  }
+  if (capImg) {
+    capImg.addEventListener('click', refreshCap);
+    capImg.addEventListener('load', function () {
+      capImg.style.display = '';
+      if (capSpin) capSpin.style.display = 'none';
+    });
+    capImg.addEventListener('error', function () {
+      if (capSpin) { capSpin.style.display = 'grid'; capSpin.textContent = '失败'; }
+      capImg.style.display = 'none';
+    });
+    setTimeout(refreshCap, 400);
+  }
+
+  /* ---------- 密码可见 / 记住 ---------- */
+  var eye = $('#eyeBtn'), pwd = $('#pwd');
+  if (eye && pwd) {
+    eye.addEventListener('click', function () {
+      pwd.type = (pwd.type === 'password') ? 'text' : 'password';
+      pwd.focus();
+    });
+  }
+  $('#remember').addEventListener('change', function () {
+    toast(this.checked ? '已勾选，本次登录会保留 ' + {{ remember_days }} + ' 天' : '已取消，关闭浏览器即失效');
+  });
+
+  /* ---------- 底部提示 ---------- */
+  $('#forgot').addEventListener('click', function () {
+    toast('密码保存在服务端本地配置文件里，需由管理员修改');
+  });
+  document.querySelectorAll('.sso button').forEach(function (b) {
+    b.addEventListener('click', function () { toast(this.getAttribute('data-tip') || ''); });
+  });
+  document.querySelectorAll('.b-links a').forEach(function (a) {
+    a.addEventListener('click', function () {
+      var k = this.getAttribute('data-open');
+      if (k === 'help') toast('忘记密码请联系管理员修改服务端认证配置');
+      else if (k === 'file') toast('会话使用签名 Cookie，勾选「记住此设备」可保留多天');
+      else toast('本机直接访问 http://127.0.0.1 对应的 Web 端口即可');
+    });
+  });
+
+  /* ---------- 提交 ---------- */
+  var card = $('#card'), form = $('#loginForm'), btn = $('#submitBtn');
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    clearErrs();
+
+    var u = $('#user').value.trim(), p = $('#pwd').value, c = '';
+    var codeEl = $('#code');
+    if (codeEl) c = codeEl.value.trim().toUpperCase();
+
+    var bad = false;
+    if (!u) { setErr('#errUser', '请输入账号'); bad = true; }
+    if (!p) { setErr('#errPwd', '请输入密码'); bad = true; }
+    if (codeEl && c.length < 4) { setErr('#errCode', '请输入 4 位验证码'); bad = true; }
+    if (bad) { card.classList.add('shake'); setTimeout(function () { card.classList.remove('shake'); }, 560); return; }
+
+    btn.classList.add('loading');
+    btn.disabled = true;
+
+    fetch('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user: u, pwd: p, code: c,
+        remember: $('#remember').checked,
+        next: $('#nextUrl').value || '/'
+      })
+    }).then(function (r) { return r.json(); }).then(function (d) {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      if (!d.success) {
+        if (d.field) setErr(d.field === 'pwd' ? '#errPwd' : (d.field === 'code' ? '#errCode' : '#errUser'), d.message);
+        else toast(d.message || '登录失败');
+        if (d.refresh_captcha) refreshCap();
+        if (codeEl) codeEl.value = '';
+        card.classList.add('shake');
+        setTimeout(function () { card.classList.remove('shake'); }, 560);
+        return;
+      }
+      clearErrs();
+      card.classList.add('ok');
+      $('#doneTip').textContent = '正在进入 ' + (d.redirect || '/') + ' ...';
+      var fl = $('#flash'); if (fl) { fl.classList.add('go'); setTimeout(function () { fl.classList.remove('go'); }, 950); }
+      setTimeout(function () { window.location.href = d.redirect || '/'; }, 1250);
+    }).catch(function (err) {
+      btn.classList.remove('loading');
+      btn.disabled = false;
+      toast('网络异常：' + err);
+    });
+  });
+
+  // 自动聚焦 + 回车切换
+  if ($('#user').value === '' && $('#user')) $('#user').focus();
+  {% if toast %}
+  setTimeout(function () { toast('{{ toast }}'); }, 400);
+  {% endif %}
+  {% if ver_mismatch %}
+  setTimeout(function () { toast('会话已过期，请重新登录'); }, 300);
+  {% endif %}
+})();
+</script>
+</body>
+</html>
