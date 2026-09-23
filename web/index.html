@@ -511,7 +511,7 @@
         </div>
         <nav class="sidebar-nav">
             {# 树形目录：一级 = 页面，缩进二级 = 该页里的段落（顺序与页面自上而下完全一致） #}
-            <a class="nav-item cur" href="#" data-page="dashboard">运行状态</a>
+            <a class="nav-item cur" href="#" data-page="dashboard" data-i18n="nav.dashboard">运行状态</a>
             <div class="nav-sub nav-dash">
                 <a class="nav-item nav-dash active" href="#sec-status" data-i18n="nav.status">运行状态</a>
                 <a class="nav-item nav-dash" href="#sec-watchdog" data-i18n="nav.watchdog">进程自愈守护</a>
@@ -520,7 +520,7 @@
                 <a class="nav-item nav-dash" href="#sec-traffic" data-i18n="nav.traffic">流量监控</a>
             </div>
 
-            <a class="nav-item" href="#" data-page="settings">配置与下载</a>
+            <a class="nav-item" href="#" data-page="settings" data-i18n="nav.settings">配置与下载</a>
             <div class="nav-sub nav-sets" style="display:none">
                 <a class="nav-item nav-sets" href="#sec-config" data-i18n="nav.config">配置编辑器</a>
                 <a class="nav-item nav-sets" href="#sec-snapshots" data-i18n="nav.snapshots">配置快照</a>
@@ -529,20 +529,20 @@
                 <a class="nav-item nav-sets" href="#sec-templates" data-i18n="nav.templates">配置模板库</a>
             </div>
 
-            <a class="nav-item" href="#" data-page="system">系统设置</a>
+            <a class="nav-item" href="#" data-page="system" data-i18n="nav.system">系统设置</a>
             <div class="nav-sub nav-sys" style="display:none">
                 <a class="nav-item nav-sys" href="#sec-bins" data-i18n="nav.bins">frp 版本控制</a>
                 <a class="nav-item nav-sys" href="#sec-web" data-i18n="nav.web">Web 设置</a>
                 <a class="nav-item nav-sys" href="#sec-daemon" data-i18n="nav.daemon">守护与告警</a>
             </div>
 
-            <a class="nav-item" href="#" data-page="security">安全中心</a>
+            <a class="nav-item" href="#" data-page="security" data-i18n="nav.securitypage">安全中心</a>
             <div class="nav-sub nav-sec" style="display:none">
                 <a class="nav-item nav-sec" href="#sec-wizard" data-i18n="nav.wizard">安全向导</a>
                 <a class="nav-item nav-sec" href="#sec-security" data-i18n="nav.security">配置安全扫描</a>
             </div>
 
-            <a class="nav-item" href="#" data-page="logs">运行日志</a>
+            <a class="nav-item" href="#" data-page="logs" data-i18n="nav.logs">运行日志</a>
             <a class="nav-item" href="#" data-page="audit" data-i18n="nav.audit">操作审计</a>
         </nav>
         <div class="sidebar-footer">
@@ -554,7 +554,7 @@
         <div class="topbar">
             <div class="tb-left">
                 <span class="tb-title">FRP Manager</span>
-                <span class="tb-sub" id="tbPageName">运行状态</span>
+                <span class="tb-sub" id="tbPageName" data-i18n="nav.dashboard">运行状态</span>
             </div>
             <div class="tb-right">
                 <span class="tb-live" title="Web UI 实时运行中"><i></i>实时</span>
@@ -577,7 +577,7 @@
 
             <div class="section" id="sec-status">
                 <div class="section-head">
-                    <h2>运行状态</h2>
+                    <h2 data-i18n="sec.status">运行状态</h2>
                     <span class="mode-pills">
                         <span class="pill pill-client"><i></i>客户端 frpc</span>
                         <span class="pill pill-server"><i></i>服务端 frps</span>
@@ -606,7 +606,7 @@
 
             <div class="section" id="sec-watchdog">
                 <div class="section-head">
-                    <h2>进程自愈守护</h2>
+                    <h2 data-i18n="sec.watchdog">进程自愈守护</h2>
                     <span class="wd-state" id="wdState">检查中…</span>
                 </div>
                 <p class="hint" style="margin-bottom:10px;">
@@ -629,7 +629,7 @@
 
             <div class="section" id="sec-portmap">
                 <div class="section-head">
-                    <h2>端口映射</h2>
+                    <h2 data-i18n="sec.portmap">端口映射</h2>
                     <span class="mode-pills">
                         <span class="pill pill-client"><i></i>客户端代理</span>
                         <span class="pill pill-server"><i></i>服务端端口</span>
@@ -649,7 +649,7 @@
 
             <div class="section" id="sec-status-info">
                 <div class="section-head">
-                    <h2>服务端连接信息</h2>
+                    <h2 data-i18n="sec.serverinfo">服务端连接信息</h2>
                     <button id="dsRefreshBtn" class="btn btn-primary" style="flex:0 0 auto;min-width:auto;max-width:none;padding:7px 14px;">刷新连接信息</button>
                 </div>
                 <p style="font-size:0.8em;color:var(--txt3);margin-bottom:10px;">
@@ -803,7 +803,7 @@ dashboard_pwd = 改成更复杂的</pre>
           <main id="pageSystem" style="display:none">
             <div class="section" id="sec-bins">
                 <div class="section-head">
-                    <h2>frp 版本控制</h2>
+                    <h2 data-i18n="sec.bins">frp 版本控制</h2>
                     <button id="downloadFrpBtn" class="btn btn-primary" style="flex:0 0 auto;min-width:auto;max-width:none;padding:7px 14px;">下载 / 更新 FRP</button>
                     <button id="checkUpdateBtn" class="btn btn-secondary" style="flex:0 0 auto;min-width:auto;max-width:none;padding:7px 14px;">检查更新</button>
                 </div>
@@ -919,7 +919,7 @@ dashboard_pwd = 改成更复杂的</pre>
             </div>
 
             <div class="section" id="sec-web">
-                <div class="section-head"><h2>Web 设置</h2></div>
+                <div class="section-head"><h2 data-i18n="sec.web">Web 设置</h2></div>
                 <div class="form-group">
                     <label>Web端口:</label>
                     <input type="number" id="webPort" placeholder="1024-65535" value="5000" min="1024" max="65535">
@@ -1013,12 +1013,12 @@ dashboard_pwd = 改成更复杂的</pre>
 
             </div>
             <div class="section" id="sec-daemon">
-                <div class="section-head"><h2>守护与告警</h2></div>
+                <div class="section-head"><h2 data-i18n="sec.daemon">守护与告警</h2></div>
                 <p class="hint" style="margin-bottom:10px;">
                     进程自愈守护与掉线告警推送的开关统一在此设置；「运行状态 → 进程自愈守护」可查看实时情况。
                 </p>
                 <div class="sub-head">
-                    <h3>进程自愈</h3>
+                    <h3 data-i18n="sub.watchdog">进程自愈</h3>
                     <span class="sub-note" id="wdSettingNote">—</span>
                 </div>
                 <p class="hint">开启后，若 frpc / frps 在「期望运行」状态下意外退出，守护线程每 5 秒检测并自动拉起；连续崩溃超过上限则停止自启并告警，防止雪崩。</p>
@@ -1148,7 +1148,7 @@ dashboard_pwd = 改成更复杂的</pre>
 
           <main id="pageSettings" style="display:none">
             <div class="section" id="sec-config">
-                <h2>配置编辑器</h2>
+                <h2 data-i18n="sec.config">配置编辑器</h2>
                 <div class="form-group">
                     <label>配置类型:</label>
                     <div class="seg" id="configTypeSeg" role="tablist" aria-label="配置类型">
@@ -1198,7 +1198,7 @@ dashboard_pwd = 改成更复杂的</pre>
 
             <div class="section" id="sec-generator">
                 <div class="section-header" onclick="toggleSection('configGenerator')">
-                    <h2>配置生成器</h2>
+                    <h2 data-i18n="sec.generator">配置生成器</h2>
                     <span id="configGeneratorToggle" class="toggle-icon">▼</span>
                 </div>
                 <div class="config-generator" id="configGenerator" style="display:none;">
@@ -1386,7 +1386,7 @@ dashboard_pwd = 改成更复杂的</pre>
 
             <div class="section" id="sec-security">
                 <div class="section-head">
-                    <h2>配置安全扫描</h2>
+                    <h2 data-i18n="sec.security">配置安全扫描</h2>
                     <button id="scanSecurityBtn" class="btn btn-primary" style="flex:0 0 auto;min-width:auto;max-width:none;padding:7px 14px;">立即扫描</button>
                 </div>
                 <p class="hint">检查 frps / frpc 配置中的安全风险：管理面板是否暴露公网、是否设置鉴权 token、server_addr 是否误填 0.0.0.0 等。</p>
@@ -1400,7 +1400,7 @@ dashboard_pwd = 改成更复杂的</pre>
           <main id="pageLogs" style="display:none">
             <div class="section" id="sec-logs">
                 <div class="section-head">
-                    <h2>运行日志</h2>
+                    <h2 data-i18n="sec.logs">运行日志</h2>
                     <div class="log-toolbar">
                         <div class="seg" id="logModeSeg">
                             <button class="segbtn active" data-mode="all" type="button">全部</button>
@@ -1742,15 +1742,16 @@ function showMessage(message, type = 'info') {
 const I18N = {
     zh: {
         'nav.dashboard': '运行状态', 'nav.settings': '配置与下载', 'nav.logs': '运行日志',
+        'nav.watchdog': '进程自愈守护', 'nav.system': '系统设置', 'nav.daemon': '守护与告警', 'nav.securitypage': '安全中心',
         'nav.status': '运行状态', 'nav.portmap': '端口映射', 'nav.serverinfo': '服务端连接信息',
         'nav.traffic': '流量监控', 'nav.config': '配置编辑器', 'nav.generator': '配置生成器',
-        'nav.bins': 'FRP 下载 / 更新', 'nav.web': 'Web 设置', 'nav.security': '配置安全扫描',
+        'nav.bins': 'frp 版本控制', 'nav.web': 'Web 设置', 'nav.security': '配置安全扫描',
         'nav.audit': '操作审计', 'nav.proxies': '代理编辑器', 'nav.templates': '配置模板库',
         'sec.status': '运行状态', 'sec.portmap': '端口映射', 'sec.serverinfo': '服务端连接信息',
         'sec.traffic': '流量监控', 'sec.config': '配置编辑器', 'sec.generator': '配置生成器',
-        'sec.bins': 'FRP 下载 / 更新', 'sec.web': 'Web 设置', 'sec.security': '配置安全扫描',
+        'sec.bins': 'frp 版本控制', 'sec.web': 'Web 设置', 'sec.security': '配置安全扫描',
         'sec.audit': '操作审计', 'sec.proxies': '代理编辑器', 'sec.templates': '配置模板库',
-        'sec.logs': '运行日志',
+        'sec.logs': '运行日志', 'sec.watchdog': '进程自愈守护', 'sec.daemon': '守护与告警', 'sub.watchdog': '进程自愈',
         'btn.start': '启动', 'btn.stop': '停止', 'btn.restart': '重启', 'btn.stopall': '全部停止',
         'btn.save': '保存', 'btn.load': '加载', 'btn.refresh': '刷新', 'btn.test': '测试',
         'btn.apply': '套用模板', 'btn.add': '新增代理', 'btn.edit': '编辑', 'btn.delete': '删除',
@@ -1800,7 +1801,7 @@ const I18N = {
         'sec.traffic': 'Traffic Monitor', 'sec.config': 'Config Editor', 'sec.generator': 'Config Generator',
         'sec.bins': 'FRP Download', 'sec.web': 'Web Settings', 'sec.security': 'Security Scan',
         'sec.audit': 'Audit Log', 'sec.proxies': 'Proxy Editor', 'sec.templates': 'Templates',
-        'sec.logs': 'Logs',
+        'sec.logs': 'Logs', 'sec.watchdog': 'Self-healing Watchdog', 'sec.daemon': 'Guard & Alerts', 'sub.watchdog': 'Self-healing',
         'btn.start': 'Start', 'btn.stop': 'Stop', 'btn.restart': 'Restart', 'btn.stopall': 'Stop All',
         'btn.save': 'Save', 'btn.load': 'Load', 'btn.refresh': 'Refresh', 'btn.test': 'Test',
         'btn.apply': 'Apply', 'btn.add': 'Add Proxy', 'btn.edit': 'Edit', 'btn.delete': 'Delete',
@@ -1856,6 +1857,8 @@ class FRPManagerUI {
         this.initElements();
         this.initEventListeners();
         this.initTheme();
+        // 启动即恢复语言偏好（localStorage + 服务器持久化）
+        this.loadI18n();
         // 首屏只加载当前页需要的数据，其余等切页时再拉（显著减少启动请求数）
         this.enterCurrentPage();
     }
@@ -1978,6 +1981,10 @@ class FRPManagerUI {
                 localStorage.setItem('frp-theme', next);
                 sync();
             });
+        }
+        // 语言切换：点击在 中文 / English 之间切换
+        if (this.langToggle) {
+            this.langToggle.addEventListener('click', () => this.toggleLang());
         }
     }
     
@@ -3991,14 +3998,22 @@ class FRPManagerUI {
 
     // ================= P2-⑳ 多语言切换 =================
     async loadI18n() {
+        // 先用本地存储即时生效，避免闪烁；再与服务器持久化值对齐
+        try {
+            const saved = localStorage.getItem('frp-lang');
+            if (saved === 'en' || saved === 'zh') {
+                CURRENT_LANG = saved;
+                this.applyLang();
+            }
+        } catch (e) {}
         try {
             const resp = await fetch('/api/i18n');
             const d = await resp.json();
-            if (d.success && d.lang) {
+            if (d.success && d.lang && d.lang !== CURRENT_LANG) {
                 CURRENT_LANG = (d.lang === 'en') ? 'en' : 'zh';
+                this.applyLang();
             }
         } catch (e) { /* 忽略，使用默认中文 */ }
-        this.applyLang();
     }
     applyLang() {
         try { localStorage.setItem('frp-lang', CURRENT_LANG); } catch (e) {}
