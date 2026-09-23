@@ -8,6 +8,25 @@
 ![FRP Manager](https://img.shields.io/badge/FRP-Manager-blue)
 ![Python-3.7+-green](https://img.shields.io/badge/Python-3.7+-green)
 ![License-MIT-yellow](https://img.shields.io/badge/License-MIT-yellow)
+![Platform-Windows%20%7C%20Linux%20%7C%20ARM%20%7C%20macOS-9cf](https://img.shields.io/badge/Platform-Windows%20%7C%20Linux%20%7C%20ARM%20%7C%20macOS-9cf)
+
+## 🖼️ 界面预览
+
+> 下图为面板真实渲染界面，截图使用演示数据（非真实配置，不含任何密钥）。
+
+**运行状态 · 浅色主题**
+
+![运行状态 · 浅色主题](docs/screenshots/01-dashboard-light.png)
+
+**运行状态 · 深色主题**
+
+![运行状态 · 深色主题](docs/screenshots/02-dashboard-dark.png)
+
+| 配置与下载 | 系统设置 |
+| :---: | :---: |
+| ![配置与下载](docs/screenshots/03-settings-light.png) | ![系统设置](docs/screenshots/04-system-light.png) |
+| **安全中心** | **操作审计** |
+| ![安全中心](docs/screenshots/05-security-light.png) | ![操作审计](docs/screenshots/06-audit-light.png) |
 
 ## ✨ 功能特性
 
@@ -105,18 +124,26 @@
 
 ```bash
 # 克隆项目
-git clone https://github.com/yourusername/frp-manager.git
+git clone https://github.com/Code847/frp-manager.git
 cd frp-manager
 
 # 安装依赖
 pip install -r requirements.txt
 
+# 下载 frp 二进制（仓库不含 bin/，首次必须执行）
+python download_frp.py
+
 # 启动服务
 python main.py
 
-# 访问Web界面
+# 访问Web界面（端口被占用时会自动顺延，实际地址以控制台输出为准）
 # http://localhost:5000
 ```
+
+> **为什么仓库里没有 `bin/`？** frp 的 frpc / frps 可执行文件共约 143MB，
+> 放在 Git 里会让仓库迅速膨胀。首次克隆后执行 `python download_frp.py` 即可按当前平台
+> 自动下载（内置 ghfast / gh-proxy 等国内加速镜像，可用 `--mirror` 指定）；
+> 也可以在面板的「系统设置 → frp 版本控制」里图形化下载与切换版本。
 
 ### Windows 快速启动
 
@@ -126,9 +153,9 @@ python main.py
 start.bat
 ```
 
-> `start.bat` 是**静默启动**：优先用 `pythonw.exe` 拉起进程，没有黑窗口、不打印状态，
-> 运行状态全部交给右下角托盘角标表达（见下节）。只有找不到 Python 时才提示。
-> 需要看控制台输出时直接执行 `python main.py`。
+> `start.bat` 为**可见模式**：前台运行 `python -u main.py`，实时打印启动过程与面板地址，
+> 出错时窗口保留并显示原因，方便排查（不会再出现「闪退、看不到提示」）。
+> 面板启动后支持右下角托盘角标与菜单（见下节）。
 
 ### 🧭 Windows 托盘角标与菜单
 
@@ -628,7 +655,7 @@ sudo yum install python3 python3-pip -y
 #### 2. 下载项目
 
 ```bash
-git clone https://github.com/your-repo/frp-manager.git
+git clone https://github.com/Code847/frp-manager.git
 cd frp-manager
 
 ```
