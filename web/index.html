@@ -1038,6 +1038,47 @@ dashboard_pwd = 改成更复杂的</pre>
 
                 <div class="auth-sep"></div>
                 <div class="sub-head">
+                    <h3>定时重启</h3>
+                    <span class="sub-note" id="arSettingNote">—</span>
+                </div>
+                <p class="hint">按固定间隔（小时）或每天指定时刻自动重启勾选的 frpc / frps，适合需要定期刷新连接、回收资源的场景；仅重启「正在运行或已登记自愈」的进程，不会擅自拉起未运行的 frp。</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="chk"><input type="checkbox" id="autoRestartEnabled"> 启用定时重启</label>
+                    </div>
+                    <div class="form-group">
+                        <label>触发方式:</label>
+                        <select id="autoRestartMode">
+                            <option value="interval">按间隔（每 N 小时）</option>
+                            <option value="daily">每天固定时刻</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>重启间隔（小时，1–720）:</label>
+                        <input type="number" id="autoRestartInterval" min="1" max="720" value="24">
+                    </div>
+                    <div class="form-group">
+                        <label>每天重启时刻（触发方式选「每天」时生效）:</label>
+                        <input type="time" id="autoRestartTime" value="04:00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="chk"><input type="checkbox" id="autoRestartFrpc" checked> 重启 FRPC 客户端</label>
+                    </div>
+                    <div class="form-group">
+                        <label class="chk"><input type="checkbox" id="autoRestartFrps" checked> 重启 FRPS 服务端</label>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <button id="saveAutoRestartBtn" class="btn btn-primary">保存定时重启设置</button>
+                    <button id="reloadAutoRestartBtn" class="btn btn-secondary">重新读取</button>
+                </div>
+
+                <div class="auth-sep"></div>
+                <div class="sub-head">
                     <h3>掉线告警推送</h3>
                     <span class="sub-note" id="alertStatusNote">—</span>
                 </div>
@@ -1838,7 +1879,7 @@ class FRPManagerUI {
         this._once('webport', () => this.loadWebPort());
         this._once('auth', () => this.loadAuthConfig());
         this._once('boot', () => this.loadAutoStart());
-        this._once('daemon', () => { this.loadWatchdog(); this.loadAlert(); });
+        this._once('daemon', () => { this.loadWatchdog(); this.loadAutoRestart(); this.loadAlert(); });
     }
     // 配置与下载：配置编辑器 / 快照 / 生成器 / 代理编辑器 / 模板库
     enterSettings() {
@@ -2070,6 +2111,16 @@ class FRPManagerUI {
         this.saveWatchdogBtn = document.getElementById('saveWatchdogBtn');
         this.reloadWatchdogBtn = document.getElementById('reloadWatchdogBtn');
         this.wdSettingNote = document.getElementById('wdSettingNote');
+        // 定时重启设置（v1.13.0）
+        this.autoRestartEnabled = document.getElementById('autoRestartEnabled');
+        this.autoRestartMode = document.getElementById('autoRestartMode');
+        this.autoRestartInterval = document.getElementById('autoRestartInterval');
+        this.autoRestartTime = document.getElementById('autoRestartTime');
+        this.autoRestartFrpc = document.getElementById('autoRestartFrpc');
+        this.autoRestartFrps = document.getElementById('autoRestartFrps');
+        this.saveAutoRestartBtn = document.getElementById('saveAutoRestartBtn');
+        this.reloadAutoRestartBtn = document.getElementById('reloadAutoRestartBtn');
+        this.arSettingNote = document.getElementById('arSettingNote');
         // 掉线告警设置
         this.alertEnabled = document.getElementById('alertEnabled');
         this.alertType = document.getElementById('alertType');
@@ -2348,6 +2399,8 @@ class FRPManagerUI {
         // ===== P1 新功能事件 =====
         if (this.saveWatchdogBtn) this.saveWatchdogBtn.addEventListener('click', () => this.saveWatchdog());
         if (this.reloadWatchdogBtn) this.reloadWatchdogBtn.addEventListener('click', () => this.loadWatchdog());
+        if (this.saveAutoRestartBtn) this.saveAutoRestartBtn.addEventListener('click', () => this.saveAutoRestart());
+        if (this.reloadAutoRestartBtn) this.reloadAutoRestartBtn.addEventListener('click', () => this.loadAutoRestart());
         if (this.saveAlertBtn) this.saveAlertBtn.addEventListener('click', () => this.saveAlert());
         if (this.reloadAlertBtn) this.reloadAlertBtn.addEventListener('click', () => this.loadAlert());
         if (this.testAlertBtn) this.testAlertBtn.addEventListener('click', () => this.testAlert());
@@ -3451,6 +3504,75 @@ class FRPManagerUI {
             this.showMessage(d.message || (d.success ? '已保存' : '保存失败'), d.success ? 'success' : 'error');
             this.loadWatchdog();
         } catch (e) { this.showMessage('保存自愈设置失败', 'error'); }
+    }
+
+    // ========== v1.13.0：定时重启设置 ==========
+    fmtTs(ts) {
+        if (!ts) return '';
+        const d = new Date(ts * 1000);
+        if (isNaN(d.getTime())) return '';
+        const p = n => String(n).padStart(2, '0');
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
+             + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+
+    async loadAutoRestart() {
+        if (!this.saveAutoRestartBtn) return;
+        try {
+            const resp = await fetch('/api/settings/autorestart');
+            if (resp.status === 401) return;
+            const d = await resp.json();
+            if (!d.success) return;
+            const s = d.settings || {};
+            if (this.autoRestartEnabled) this.autoRestartEnabled.checked = !!s.auto_restart_enabled;
+            if (this.autoRestartMode) this.autoRestartMode.value = s.auto_restart_mode === 'daily' ? 'daily' : 'interval';
+            if (this.autoRestartInterval) this.autoRestartInterval.value = s.auto_restart_interval || 24;
+            if (this.autoRestartTime) this.autoRestartTime.value = s.auto_restart_time || '04:00';
+            if (this.autoRestartFrpc) this.autoRestartFrpc.checked = s.auto_restart_frpc !== false;
+            if (this.autoRestartFrps) this.autoRestartFrps.checked = s.auto_restart_frps !== false;
+            if (this.arSettingNote) {
+                if (!s.auto_restart_enabled) {
+                    this.arSettingNote.textContent = '已停用';
+                    this.arSettingNote.style.color = '#ef4444';
+                } else {
+                    const lastC = this.fmtTs(s.last_fire && s.last_fire.client);
+                    const lastS = this.fmtTs(s.last_fire && s.last_fire.server);
+                    const next = this.fmtTs(s.next_due);
+                    let txt = '已启用';
+                    if (next) txt += ' · 下次约 ' + next;
+                    if (lastC) txt += ' · frpc 上次 ' + lastC;
+                    if (lastS) txt += ' · frps 上次 ' + lastS;
+                    this.arSettingNote.textContent = txt;
+                    this.arSettingNote.style.color = '#22c55e';
+                }
+            }
+        } catch (e) { console.error('读取定时重启设置失败:', e); }
+    }
+
+    async saveAutoRestart() {
+        if (!this.saveAutoRestartBtn) return;
+        const body = {
+            auto_restart_enabled: this.autoRestartEnabled ? this.autoRestartEnabled.checked : false,
+            auto_restart_mode: this.autoRestartMode ? this.autoRestartMode.value : 'interval',
+            auto_restart_interval: this.autoRestartInterval ? (parseInt(this.autoRestartInterval.value, 10) || 24) : 24,
+            auto_restart_time: this.autoRestartTime ? this.autoRestartTime.value : '04:00',
+            auto_restart_frpc: this.autoRestartFrpc ? this.autoRestartFrpc.checked : true,
+            auto_restart_frps: this.autoRestartFrps ? this.autoRestartFrps.checked : true
+        };
+        if (body.auto_restart_enabled && !body.auto_restart_frpc && !body.auto_restart_frps) {
+            this.showMessage('请至少勾选 FRPC 或 FRPS 之一', 'error');
+            return;
+        }
+        try {
+            const resp = await fetch('/api/settings/autorestart', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            const d = await resp.json();
+            this.showMessage(d.message || (d.success ? '已保存' : '保存失败'), d.success ? 'success' : 'error');
+            this.loadAutoRestart();
+        } catch (e) { this.showMessage('保存定时重启设置失败', 'error'); }
     }
 
     renderWatchdogStatus(st) {

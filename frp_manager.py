@@ -200,6 +200,13 @@ class FRPManager:
         self._watchdog_max = self.WATCHDOG_MAX_CRASHES
         self._security_issues = []
 
+        # ---- 定时重启（v1.13.0）----
+        self._ar_last_interval = time.time()   # 间隔模式：上次（或启动时）时间戳
+        self._ar_last_daily = ''               # 每日模式：上次触发日期 'YYYY-MM-DD'
+        self._ar_last_fire = {'client': 0.0, 'server': 0.0}
+        self._ar_next_due = 0.0                # 下次预计触发的时间戳（0=未知）
+        self._ar_interval_used = None          # 检测间隔变化，变了就重新计时
+
         # 审计日志路径（与 frp 运行日志分开）
         self._audit_path = os.path.join(self.config['FRP_LOG_DIR'], 'audit.log')
 
@@ -531,6 +538,10 @@ class FRPManager:
             'lang': 'zh',
             # 配置快照（P3-⑦）：保存配置时自动生成快照，可回滚
             'auto_snapshot': True,
+            # 定时重启（v1.13.0）：mode=interval 按间隔小时 / daily 每天固定时刻
+            'auto_restart_enabled': False, 'auto_restart_mode': 'interval',
+            'auto_restart_interval': 24, 'auto_restart_time': '04:00',
+            'auto_restart_frpc': True, 'auto_restart_frps': True,
         }
         p = self.app_settings_path()
         if not os.path.exists(p):
@@ -582,6 +593,23 @@ class FRPManager:
             if cp.has_section('snapshot'):
                 if cp.has_option('snapshot', 'auto_snapshot'):
                     out['auto_snapshot'] = cp.get('snapshot', 'auto_snapshot').strip().lower() in ('1', 'true', 'yes', 'on')
+            if cp.has_section('restart'):
+                if cp.has_option('restart', 'auto_restart_enabled'):
+                    out['auto_restart_enabled'] = cp.get('restart', 'auto_restart_enabled').strip().lower() in ('1', 'true', 'yes', 'on')
+                if cp.has_option('restart', 'auto_restart_mode'):
+                    v = cp.get('restart', 'auto_restart_mode').strip().lower()
+                    if v in ('interval', 'daily'):
+                        out['auto_restart_mode'] = v
+                if cp.has_option('restart', 'auto_restart_interval'):
+                    try:
+                        out['auto_restart_interval'] = int(cp.get('restart', 'auto_restart_interval'))
+                    except ValueError:
+                        pass
+                if cp.has_option('restart', 'auto_restart_time'):
+                    out['auto_restart_time'] = cp.get('restart', 'auto_restart_time').strip() or '04:00'
+                for k in ('auto_restart_frpc', 'auto_restart_frps'):
+                    if cp.has_option('restart', k):
+                        out[k] = cp.get('restart', k).strip().lower() in ('1', 'true', 'yes', 'on')
         except Exception as e:
             print(f"[WARN] 读取应用设置失败: {e}")
         return out
@@ -608,6 +636,13 @@ class FRPManager:
             cp.set('download', 'mirror', str(merged.get('mirror', 'auto')))
             cp.add_section('snapshot')
             cp.set('snapshot', 'auto_snapshot', sv(merged.get('auto_snapshot', True)))
+            cp.add_section('restart')
+            cp.set('restart', 'auto_restart_enabled', sv(merged.get('auto_restart_enabled', False)))
+            cp.set('restart', 'auto_restart_mode', str(merged.get('auto_restart_mode', 'interval')))
+            cp.set('restart', 'auto_restart_interval', str(int(merged.get('auto_restart_interval', 24) or 24)))
+            cp.set('restart', 'auto_restart_time', str(merged.get('auto_restart_time', '04:00')))
+            cp.set('restart', 'auto_restart_frpc', sv(merged.get('auto_restart_frpc', True)))
+            cp.set('restart', 'auto_restart_frps', sv(merged.get('auto_restart_frps', True)))
             cp.add_section('monitor')
             cp.set('monitor', 'watchdog_enabled', sv(merged.get('watchdog_enabled', True)))
             cp.set('monitor', 'watchdog_max_crashes', str(merged.get('watchdog_max_crashes', 5)))
@@ -1542,6 +1577,7 @@ class FRPManager:
                 if getattr(self, '_watchdog_enabled', True):
                     self._watchdog_tick()
                 self._maybe_rotate_logs()
+                self._auto_restart_tick()
             except Exception as e:
                 print(f"[WARN] 监控线程异常: {e}")
             # 用 Event.wait 既能定时又能被 stop 立即唤醒
@@ -1615,6 +1651,111 @@ class FRPManager:
             }
         out['enabled'] = getattr(self, '_watchdog_enabled', True)
         out['max_crashes'] = getattr(self, '_watchdog_max', self.WATCHDOG_MAX_CRASHES)
+        return out
+
+    # ------------------------------------------------------------------ #
+    # 定时重启 FRP（v1.13.0）：按间隔小时或每天固定时刻重启 frpc / frps
+    # ------------------------------------------------------------------ #
+    @staticmethod
+    def _parse_hhmm(s):
+        """'HH:MM' → (H, M)；非法返回 None。"""
+        try:
+            parts = str(s or '').strip().split(':')
+            if len(parts) != 2:
+                return None
+            h, m = int(parts[0]), int(parts[1])
+            if 0 <= h < 24 and 0 <= m < 60:
+                return (h, m)
+        except (ValueError, TypeError):
+            pass
+        return None
+
+    def _auto_restart_tick(self):
+        """监控线程内每 5 秒调用一次：到期则重启勾选的 frpc / frps。"""
+        s = self.load_app_settings()
+        now = time.time()
+        if not s.get('auto_restart_enabled'):
+            # 关闭期间持续刷新计时基准，避免重新开启后立刻触发
+            self._ar_last_interval = now
+            self._ar_last_daily = time.strftime('%Y-%m-%d')
+            self._ar_next_due = 0.0
+            return
+        modes = []
+        if s.get('auto_restart_frpc', True):
+            modes.append('client')
+        if s.get('auto_restart_frps', True):
+            modes.append('server')
+        if not modes:
+            self._ar_next_due = 0.0
+            return
+
+        due = False
+        if s.get('auto_restart_mode', 'interval') == 'daily':
+            hm = self._parse_hhmm(s.get('auto_restart_time', '04:00'))
+            if hm is None:
+                self._ar_next_due = 0.0
+                return
+            today = time.strftime('%Y-%m-%d')
+            hhmm = time.strftime('%H:%M')
+            target = '%02d:%02d' % hm
+            # 到点且今天还没触发过（tick 粒度 5s，HH:MM 相等即命中）
+            if hhmm >= target and self._ar_last_daily != today:
+                due = True
+                self._ar_last_daily = today
+                self._ar_last_interval = now
+            self._ar_next_due = 0.0
+        else:
+            try:
+                hours = int(s.get('auto_restart_interval', 24) or 24)
+            except (TypeError, ValueError):
+                hours = 24
+            hours = max(1, min(hours, 720))
+            # 设置变了 → 重新计时，避免改个数字马上重启
+            if self._ar_interval_used != hours:
+                self._ar_interval_used = hours
+                self._ar_last_interval = now
+            period = hours * 3600
+            if now - self._ar_last_interval >= period:
+                due = True
+                self._ar_last_interval = now
+            self._ar_next_due = self._ar_last_interval + period
+
+        if not due:
+            return
+        label_all = []
+        for mode in modes:
+            label = self.MODE_LABEL.get(mode, mode)
+            st = self.get_frp_status().get(mode) or {}
+            if not (st.get('running') or self._desired.get(mode)):
+                self._ar_last_fire[mode] = now
+                self.write_event(f"定时重启跳过 {label} · 当前未运行")
+                continue
+            self.stop_frp(mode)
+            self.kill_frp_mode(mode)
+            time.sleep(1)
+            ok, msg = self.start_frp(self.resolve_config_file(mode), mode)
+            self._ar_last_fire[mode] = time.time()
+            if ok:
+                self.write_event(f"定时重启 {label} 成功 · {msg}")
+            else:
+                self.write_event(f"定时重启 {label} 失败 · {msg}")
+                self.send_alert(f"FRP {label} 定时重启失败：{msg}", title='FRP 定时重启失败')
+            label_all.append(label)
+        if label_all:
+            print(f"[INFO] 定时重启完成：{' / '.join(label_all)}")
+
+    def get_auto_restart_status(self):
+        """定时重启：当前设置 + 上次触发 / 下次预计，供前端展示。"""
+        s = self.load_app_settings()
+        out = {k: s.get(k) for k in ('auto_restart_enabled', 'auto_restart_mode',
+                                     'auto_restart_interval', 'auto_restart_time',
+                                     'auto_restart_frpc', 'auto_restart_frps')}
+        out['last_fire'] = {
+            'client': self._ar_last_fire.get('client', 0.0),
+            'server': self._ar_last_fire.get('server', 0.0),
+        }
+        nd = getattr(self, '_ar_next_due', 0.0)
+        out['next_due'] = nd if nd and s.get('auto_restart_enabled') else 0
         return out
 
     # ------------------------------------------------------------------ #

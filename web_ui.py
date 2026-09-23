@@ -1540,6 +1540,48 @@ def settings_monitor():
 
 
 # --------------------------------------------------------------------- #
+# 定时重启 FRP 设置（v1.13.0）
+# --------------------------------------------------------------------- #
+@app.route('/api/settings/autorestart', methods=['GET', 'POST'])
+def settings_autorestart():
+    m = app.config['FRP_MANAGER']
+    if request.method == 'GET':
+        return jsonify({'success': True, 'settings': m.get_auto_restart_status()})
+    data = request.get_json(silent=True) or {}
+    mode = data.get('auto_restart_mode') or 'interval'
+    if mode not in ('interval', 'daily'):
+        mode = 'interval'
+    try:
+        hours = int(data.get('auto_restart_interval', 24) or 24)
+    except (TypeError, ValueError):
+        hours = 24
+    hours = max(1, min(hours, 720))
+    restart_time = str(data.get('auto_restart_time') or '04:00').strip()
+    hm = m._parse_hhmm(restart_time)
+    if hm is None:
+        return jsonify({'success': False, 'message': '重启时刻格式应为 HH:MM（如 04:00）'}), 400
+    restart_time = '%02d:%02d' % hm
+    ok = m.save_app_settings({
+        'auto_restart_enabled': bool(data.get('auto_restart_enabled', False)),
+        'auto_restart_mode': mode,
+        'auto_restart_interval': hours,
+        'auto_restart_time': restart_time,
+        'auto_restart_frpc': bool(data.get('auto_restart_frpc', True)),
+        'auto_restart_frps': bool(data.get('auto_restart_frps', True)),
+    })
+    if not ok:
+        return jsonify({'success': False, 'message': '保存设置失败（查看控制台日志）'}), 500
+    m.write_event('设置已更新 · 定时重启=%s 模式=%s 间隔=%sh 时刻=%s frpc=%s frps=%s'
+                  % (data.get('auto_restart_enabled'), mode, hours, restart_time,
+                     data.get('auto_restart_frpc'), data.get('auto_restart_frps')))
+    m.audit_event('autorestart_settings', 'monitor', 'success',
+                  'enabled=%s mode=%s interval=%sh time=%s' %
+                  (data.get('auto_restart_enabled'), mode, hours, restart_time),
+                  request.remote_addr)
+    return jsonify({'success': True, 'message': '定时重启设置已保存'})
+
+
+# --------------------------------------------------------------------- #
 # 操作审计日志
 # --------------------------------------------------------------------- #
 @app.route('/api/audit')
