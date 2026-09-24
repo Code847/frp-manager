@@ -70,6 +70,37 @@ def data_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 
+_MSG_LANG = {'at': 0.0, 'lang': 'zh'}
+
+
+def _msg_lang():
+    """当前界面语言（读 configs/app_settings.ini 的 [ui] lang），2 秒缓存"""
+    now = time.time()
+    if now - _MSG_LANG['at'] < 2.0:
+        return _MSG_LANG['lang']
+    lang = 'zh'
+    try:
+        f = os.path.join(data_dir(), 'configs', 'app_settings.ini')
+        if os.path.exists(f):
+            cp = configparser.ConfigParser()
+            cp.read(f, encoding='utf-8')
+            if cp.has_section('ui') and cp.has_option('ui', 'lang'):
+                if cp.get('ui', 'lang').strip().lower().startswith('en'):
+                    lang = 'en'
+    except Exception:
+        pass
+    _MSG_LANG['at'] = now
+    _MSG_LANG['lang'] = lang
+    return lang
+
+
+def _m(zh, en=None):
+    """按当前界面语言返回文案；英文缺省时回退中文"""
+    if _msg_lang() != 'en':
+        return zh
+    return en if en else zh
+
+
 def seed_data(name, force=False):
     """首次运行：把打包资源里的 name 目录（configs / bin）复制到 data 目录。
 
@@ -1047,12 +1078,14 @@ class FRPManager:
         proc = self.frp_processes.get(mode)
         if proc is not None and proc.poll() is None:
             return {'running': True, 'pid': proc.pid,
-                    'mode': mode, 'message': '通过 Web UI 启动'}
+                    'mode': mode,
+                    'message': _m('通过 Web UI 启动', 'Started from the Web UI')}
 
         ext = self._scan_external_frp().get(mode)
         if ext:
             return dict(ext)
-        return {'running': False, 'pid': None, 'mode': mode, 'message': '未运行'}
+        return {'running': False, 'pid': None, 'mode': mode,
+                'message': _m('未运行', 'Idle')}
 
     def get_frp_status(self):
         """获取 FRP 运行状态（跨平台）。client 与 server 各自独立返回，
@@ -1728,7 +1761,8 @@ class FRPManager:
             st = self.get_frp_status().get(mode) or {}
             if not (st.get('running') or self._desired.get(mode)):
                 self._ar_last_fire[mode] = now
-                self.write_event(f"定时重启跳过 {label} · 当前未运行")
+                self.write_event(_m(f"定时重启跳过 {label} · 当前未运行",
+                                    f"Scheduled restart skipped {label} · not running"))
                 continue
             self.stop_frp(mode)
             self.kill_frp_mode(mode)
@@ -1908,28 +1942,37 @@ class FRPManager:
                 if ws.get('port'):
                     if not ws.get('user') or not ws.get('password'):
                         issues.append({'level': 'high', 'mode': 'server',
-                                       'msg': 'frps 管理面板已开启但未设置账号密码，公网可直连控制',
-                                       'fix': '在 [webServer] 段设置 user 与 password，或 bind 到 127.0.0.1'})
+                                       'msg': _m('frps 管理面板已开启但未设置账号密码，公网可直连控制',
+                                                 'The frps dashboard is on but has no credentials; anyone on the internet can control it'),
+                                       'fix': _m('在 [webServer] 段设置 user 与 password，或 bind 到 127.0.0.1',
+                                                 'Set user and password in the [webServer] section, or bind it to 127.0.0.1')})
                     if ws.get('addr') in (None, '0.0.0.0', '::', ''):
                         issues.append({'level': 'medium', 'mode': 'server',
-                                       'msg': 'frps 管理面板监听 0.0.0.0（所有网卡），建议仅监听内网',
+                                       'msg': _m('frps 管理面板监听 0.0.0.0（所有网卡），建议仅监听内网',
+                                                 'The frps dashboard listens on 0.0.0.0 (all interfaces); bind it to the LAN only'),
                                        'fix': 'webServer.addr = "127.0.0.1"'})
                 tok = self._parse_token(text)
                 if not tok:
                     issues.append({'level': 'high', 'mode': 'server',
-                                   'msg': 'frps 未设置 auth.token，任何人都能接入你的服务端',
-                                   'fix': '在配置中设置 auth.token = "复杂字符串"'})
+                                   'msg': _m('frps 未设置 auth.token，任何人都能接入你的服务端',
+                                             'frps has no auth.token; anyone can connect to your server'),
+                                   'fix': _m('在配置中设置 auth.token = "复杂字符串"',
+                                             'Set auth.token = "a-strong-random-string" in the config')})
             else:
                 tok = self._parse_token(text)
                 if not tok:
                     issues.append({'level': 'medium', 'mode': 'client',
-                                   'msg': 'frpc 未设置 token，与服务端可能不一致或被拒绝',
-                                   'fix': 'token 需与服务端 auth.token 一致'})
+                                   'msg': _m('frpc 未设置 token，与服务端可能不一致或被拒绝',
+                                             'frpc has no token; it may not match the server and get rejected'),
+                                   'fix': _m('token 需与服务端 auth.token 一致',
+                                             'The token must match the server auth.token')})
                 m = re.search(r'(?:server_addr|serverAddr)\s*=\s*["\']?([0-9a-zA-Z.\-]+)', text)
                 if m and m.group(1).strip().lower() == '0.0.0.0':
                     issues.append({'level': 'high', 'mode': 'client',
-                                   'msg': 'frpc 的 server_addr 不能填 0.0.0.0',
-                                   'fix': '改为服务端可达的 IP 或域名'})
+                                   'msg': _m('frpc 的 server_addr 不能填 0.0.0.0',
+                                             'server_addr must not be 0.0.0.0'),
+                                   'fix': _m('改为服务端可达的 IP 或域名',
+                                             'Use an IP or domain that can reach the server')})
         self._security_issues = issues
         return issues
 

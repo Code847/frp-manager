@@ -21,6 +21,39 @@ BASE_DIR = resource_dir()
 DATA_DIR = data_dir()
 
 
+# ---------------------------------------------------------------- 消息多语言
+# 接口返回给前端的提示按界面语言（app_settings.ini [ui] lang）切换中英
+_MSG_LANG = {'at': 0.0, 'lang': 'zh'}
+
+
+def _msg_lang():
+    now = time.time()
+    if now - _MSG_LANG['at'] < 2.0:
+        return _MSG_LANG['lang']
+    lang = 'zh'
+    try:
+        import configparser
+        f = os.path.join(DATA_DIR, 'configs', 'app_settings.ini')
+        if os.path.exists(f):
+            cp = configparser.ConfigParser()
+            cp.read(f, encoding='utf-8')
+            if cp.has_section('ui') and cp.has_option('ui', 'lang'):
+                if cp.get('ui', 'lang').strip().lower().startswith('en'):
+                    lang = 'en'
+    except Exception:
+        pass
+    _MSG_LANG['at'] = now
+    _MSG_LANG['lang'] = lang
+    return lang
+
+
+def _m(zh, en=None):
+    """按当前界面语言返回提示；英文缺省时回退中文"""
+    if _msg_lang() != 'en':
+        return zh
+    return en if en else zh
+
+
 def load_web_port(default=5000):
     """从 configs/web_port.ini 读取 Web 端口，环境变量 FRP_WEB_PORT 优先"""
     env_port = os.environ.get('FRP_WEB_PORT', '').strip()
@@ -284,13 +317,17 @@ def extract_port_mappings(mode, cfg_path):
             custom = kv.get('custom_domains', kv.get('customdomains', ''))
             label = name if name.lower() != 'proxies' else (kv.get('name') or 'proxy')
             if ptype in ('tcp', 'udp'):
-                text = f"内网 {local_ip}:{local_port}  →  外网 :{remote_port}"
+                text = _m(f"内网 {local_ip}:{local_port}  →  外网 :{remote_port}",
+                    f"LAN {local_ip}:{local_port}  →  remote :{remote_port}")
             elif ptype in ('http', 'https'):
-                text = f"内网 {local_ip}:{local_port}  →  域名 {custom or '(未设置)'}"
+                text = _m(f"内网 {local_ip}:{local_port}  →  域名 {custom or '(未设置)'}",
+                    f"LAN {local_ip}:{local_port}  →  domain {custom or '(not set)'}")
             elif ptype in ('stcp', 'xtcp'):
-                text = f"内网 {local_ip}:{local_port}  （P2P 点对点）"
+                text = _m(f"内网 {local_ip}:{local_port}  （P2P 点对点）",
+                    f"LAN {local_ip}:{local_port}  (P2P direct)")
             else:
-                text = f"内网 {local_ip}:{local_port}"
+                text = _m(f"内网 {local_ip}:{local_port}",
+                    f"LAN {local_ip}:{local_port}")
             out.append({'name': label, 'type': ptype, 'text': text})
         return out
 
@@ -303,16 +340,16 @@ def extract_port_mappings(mode, cfg_path):
             break
     bind = common.get('bind_port', common.get('bindport', ''))
     if bind:
-        out.append({'name': 'FRP 服务端口', 'type': 'bind',
-                    'text': f"客户端接入 :{bind}"})
+        out.append({'name': _m('FRP 服务端口', 'FRP bind port'), 'type': 'bind',
+                    'text': _m(f"客户端接入 :{bind}", f"Clients connect :{bind}")})
     ws = parse_frps_webserver(text)
     if ws.get('port'):
         user = ws.get('user') or ''
-        out.append({'name': '管理面板', 'type': 'web',
-                    'text': f":{ws['port']}" + (f"  (账号 {user})" if user else "")})
+        out.append({'name': _m('管理面板', 'Dashboard'), 'type': 'web',
+                    'text': f":{ws['port']}" + (_m(f"  (账号 {user})", f"  (user {user})") if user else "")})
     allow = common.get('allow_ports', common.get('allowports', ''))
     if allow:
-        out.append({'name': '允许端口范围', 'type': 'allow', 'text': allow})
+        out.append({'name': _m('允许端口范围', 'Allowed ports'), 'type': 'allow', 'text': allow})
     return out
 
 
@@ -360,7 +397,7 @@ def collect_http_links():
 
     # 1) 本程序面板
     port = int(config.get('WEB_PORT') or 5000)
-    links.append({'key': 'panel', 'name': '本管理面板',
+    links.append({'key': 'panel', 'name': _m('本管理面板', 'this panel'),
                   'url': f'http://127.0.0.1:{port}',
                   'host': '127.0.0.1', 'port': port})
 
@@ -370,7 +407,7 @@ def collect_http_links():
         if info.get('enabled') and info.get('port'):
             host = info.get('host') or '127.0.0.1'
             links.append({'key': 'frps-api',
-                          'name': 'frps 管理面板(API)',
+                          'name': _m('frps 管理面板(API)', 'frps dashboard (API)'),
                           'url': f'http://{host}:{info["port"]}',
                           'host': host, 'port': int(info['port'])})
     except Exception:
@@ -383,7 +420,7 @@ def collect_http_links():
             stext = f.read()
         bp = re.search(r'(?:bind_port|bindPort)\s*[=:]\s*["\']?(\d+)', stext)
         if bp:
-            links.append({'key': 'frps-bind', 'name': 'frps 接入端口',
+            links.append({'key': 'frps-bind', 'name': _m('frps 接入端口', 'frps bind port'),
                           'url': f'tcp://127.0.0.1:{bp.group(1)}',
                           'host': '127.0.0.1', 'port': int(bp.group(1))})
     except OSError:
@@ -444,8 +481,9 @@ def probe_http_links(force=False):
             changed = (prev is None) or (prev != ok) or force
             _link_state[key] = ok
         if changed:
-            state = '可达' if ok else '不可达'
-            log_event(f"HTTP 链接{state} · {lk['name']} {lk['url']}")
+            state = _m('可达', 'reachable') if ok else _m('不可达', 'unreachable')
+            log_event(_m(f"HTTP 链接{state} · {lk['name']} {lk['url']}",
+                         f"HTTP link {state} · {lk['name']} {lk['url']}"))
         results.append({'name': lk['name'], 'url': lk['url'],
                         'ok': ok, 'changed': bool(changed)})
     return results
@@ -573,7 +611,7 @@ def bin_versions():
             'server': m.list_local_versions('server'),
         }
     except Exception as e:
-        return jsonify({'success': False, 'message': f'扫描失败：{e}'}), 500
+        return jsonify({'success': False, 'message': _m(f'扫描失败：{e}', f'Scan failed: {e}')}), 500
     return jsonify(data)
 
 
@@ -585,7 +623,7 @@ def bin_switch():
     mode = (body.get('mode') or '').strip()
     version = (body.get('version') or '').strip()
     if mode not in ('client', 'server'):
-        return jsonify({'success': False, 'message': 'mode 只能是 client 或 server'}), 400
+        return jsonify({'success': False, 'message': _m('mode 只能是 client 或 server', 'mode must be client or server')}), 400
     ok, msg = m.switch_binary(mode, version)
     return jsonify({'success': ok, 'message': msg,
                     'version': m.binary_version(mode)}), (200 if ok else 400)
@@ -597,7 +635,7 @@ def frp_latest():
     m = app.config['FRP_MANAGER']
     latest = m.get_latest_version(timeout=10)
     if not latest:
-        return jsonify({'success': False, 'message': '无法获取最新版本号（网络受限）'}), 500
+        return jsonify({'success': False, 'message': _m('无法获取最新版本号（网络受限）', 'Cannot fetch the latest version (network restricted)')}), 500
     return jsonify({'success': True, 'latest': latest,
                     'current_c': m.binary_version('client'),
                     'current_s': m.binary_version('server')})
@@ -634,13 +672,15 @@ def server_info():
             content = f.read()
     except OSError:
         return jsonify({'enabled': False, 'running': False,
-                        'error': '未找到服务端配置文件'})
+                        'error': _m('未找到服务端配置文件', 'Server config file not found')})
 
     ws = parse_frps_webserver(content)
     if not ws.get('port'):
         return jsonify({'enabled': False, 'running': False,
-                        'error': '服务端未启用管理API：请在服务端配置中添加 [webServer] 段，'
-                                 '设置 port/user/password 后重启 frps'})
+                        'error': _m('服务端未启用管理API：请在服务端配置中添加 [webServer] 段，'
+                                    '设置 port/user/password 后重启 frps',
+                                    'Server management API is not enabled: add a [webServer] section '
+                                    'to the server config, set port/user/password and restart frps')})
 
     # 注意：不在这里用进程检测结果提前返回 —— psutil 缺失、或 frps 由 systemd/Docker
     # 外部启动时进程检测会误判。先直接打管理API，能通就说明 frps 在跑。
@@ -661,7 +701,7 @@ def server_info():
         import requests
     except ImportError:
         return jsonify({'enabled': True, 'running': True, 'web_port': ws['port'],
-                        'error': '缺少 requests 库，无法查询服务端API',
+                        'error': _m('缺少 requests 库，无法查询服务端API', 'The requests library is missing; cannot query the server API'),
                         'proxies': [], 'totals': totals})
 
     # frps 的 dashboard 是内网直连，绕开系统代理
@@ -714,9 +754,11 @@ def server_info():
                         'running': proc_running,
                         'web_port': ws['port'],
                         'proxies': [], 'totals': totals,
-                        'error': f'无法连接管理API {base}：{last_err or "未知原因"}'
-                                 + ('（frps 进程也未检测到）' if not proc_running else '')
-                                 + '，请到上方点「检测 API 连接」看详细排查建议'})
+                        'error': _m(f'无法连接管理API {base}：{last_err or "未知原因"}', f'Cannot reach the management API {base}: {last_err or "unknown reason"}')
+                                 + (_m('（frps 进程也未检测到）', ' (no frps process detected)')
+                                    if not proc_running else '')
+                                 + _m('，请到上方点「检测 API 连接」看详细排查建议',
+                                      '; click "Test API connection" above for troubleshooting tips')})
     return jsonify({'enabled': True, 'running': True, 'web_port': ws['port'],
                     'proxies': proxies, 'totals': totals})
 
@@ -749,13 +791,15 @@ def frps_api_info():
         with open(cfg, 'r', encoding='utf-8', errors='ignore') as f:
             content = f.read()
     except OSError:
-        return {'enabled': False, 'error': '未找到服务端配置文件', 'file': cfg}
+        return {'enabled': False, 'error': _m('未找到服务端配置文件', 'Server config file not found'), 'file': cfg}
 
     ws = parse_frps_webserver(content)
     if not ws.get('port'):
         return {'enabled': False, 'file': cfg,
-                'error': '服务端未配置 [webServer]：请在服务端配置里设置 '
-                         'addr/port/user/password 后重启 frps'}
+                'error': _m('服务端未配置 [webServer]：请在服务端配置里设置 '
+                            'addr/port/user/password 后重启 frps',
+                            '[webServer] is not configured on the server: set '
+                            'addr/port/user/password and restart frps')}
 
     bind_addr = (ws.get('addr') or '0.0.0.0')
     # 0.0.0.0 / :: 是「监听所有网卡」，本机访问时换成 127.0.0.1
@@ -799,12 +843,17 @@ def frps_api_info():
         'dash_url': f"http://{dash_host}:{ws['port']}",
         'api_base': base,
         'local_only': bind_addr.startswith('127.'),
-        'auth': 'Basic Auth（用户名/密码）' if user else '未设置账号（无鉴权）',
+        'auth': (_m('Basic Auth（用户名/密码）', 'Basic Auth (user / password)') if user
+                     else _m('未设置账号（无鉴权）', 'No account set (no auth)')),
         'endpoints': [
-            {'method': 'GET', 'path': '/api/serverinfo', 'desc': '服务端概览（版本/端口/客户端数）'},
-            {'method': 'GET', 'path': '/api/proxy/tcp', 'desc': 'TCP 代理列表与流量'},
-            {'method': 'GET', 'path': '/api/proxy/udp', 'desc': 'UDP 代理列表与流量'},
-            {'method': 'GET', 'path': '/api/proxy/http', 'desc': 'HTTP 代理列表与流量'},
+            {'method': 'GET', 'path': '/api/serverinfo',
+             'desc': _m('服务端概览（版本/端口/客户端数）', 'Server overview (version / port / clients)')},
+            {'method': 'GET', 'path': '/api/proxy/tcp',
+             'desc': _m('TCP 代理列表与流量', 'TCP proxy list and traffic')},
+            {'method': 'GET', 'path': '/api/proxy/udp',
+             'desc': _m('UDP 代理列表与流量', 'UDP proxy list and traffic')},
+            {'method': 'GET', 'path': '/api/proxy/http',
+             'desc': _m('HTTP 代理列表与流量', 'HTTP proxy list and traffic')},
         ],
     }
 
@@ -872,18 +921,18 @@ def server_fix_config():
     """
     cfg = ini_webserver_issue()
     if not cfg:
-        return jsonify({'success': False, 'message': '当前配置无需修复（不是 ini，或没有 [webServer] 段）'})
+        return jsonify({'success': False, 'message': _m('当前配置无需修复（不是 ini，或没有 [webServer] 段）', 'Nothing to fix (not ini, or no [webServer] section)')})
 
     try:
         with open(cfg, 'r', encoding='utf-8', errors='ignore') as f:
             text = f.read()
     except OSError as e:
-        return jsonify({'success': False, 'message': f'读取配置失败: {e}'}), 500
+        return jsonify({'success': False, 'message': _m(f'读取配置失败: {e}', f'Failed to read config: {e}')}), 500
 
     ws = parse_frps_webserver(text)
     if not ws.get('port'):
         return jsonify({'success': False,
-                        'message': '配置里的 [webServer] 段缺少 port，无法转换'}), 400
+                        'message': _m('配置里的 [webServer] 段缺少 port，无法转换', 'The [webServer] section has no port; cannot convert')}), 400
 
     bak = cfg + '.bak-' + time.strftime('%Y%m%d%H%M%S')
     try:
@@ -892,12 +941,15 @@ def server_fix_config():
         with open(cfg, 'w', encoding='utf-8') as f:
             f.write(_convert_ini_webserver_to_dashboard(text, ws))
     except OSError as e:
-        return jsonify({'success': False, 'message': f'写入配置失败: {e}'}), 500
+        return jsonify({'success': False, 'message': _m(f'写入配置失败: {e}', f'Failed to write config: {e}')}), 500
 
     return jsonify({'success': True,
-                    'message': f'已把 [webServer] 段转换为 dashboard_*（端口 {ws["port"]}），'
-                               f'原配置已备份为 {os.path.basename(bak)}。'
-                               f'请到「控制中心」重启 frps 后再点「检测 API 连接」',
+                    'message': _m(f'已把 [webServer] 段转换为 dashboard_*（端口 {ws["port"]}），'
+                                  f'原配置已备份为 {os.path.basename(bak)}。'
+                                  f'请到「控制中心」重启 frps 后再点「检测 API 连接」',
+                                  f'Converted the [webServer] section to dashboard_* (port {ws["port"]}); '
+                                  f'the original config was backed up as {os.path.basename(bak)}. '
+                                  f'Restart frps from "Control Center", then click "Test API connection"'),
                     'backup': bak, 'port': ws['port']})
 
 
@@ -1035,14 +1087,17 @@ def _friendly_conn_error(e):
 
     if ('errno 111' in low or 'connection refused' in low
             or 'winerror 10061' in low or '积极拒绝' in s):
-        return '目标端口没有任何进程监听（连接被拒绝）'
+        return _m('目标端口没有任何进程监听（连接被拒绝）',
+                  'Nothing is listening on the target port (connection refused)')
     if 'errno 113' in low or 'no route to host' in low:
-        return '没有到该主机的路由（主机不通）'
+        return _m('没有到该主机的路由（主机不通）',
+                  'No route to the host (host unreachable)')
     if ('errno 101' in low or 'network is unreachable' in low
             or 'winerror 10051' in low or 'winerror 10065' in low):
-        return '网络不可达'
+        return _m('网络不可达', 'Network unreachable')
     if 'timed out' in low or 'timeout' in low or 'winerror 10060' in low:
-        return '连接超时（防火墙/安全组未放行，或服务卡住未响应）'
+        return _m('连接超时（防火墙/安全组未放行，或服务卡住未响应）',
+                  'Connection timed out (firewall/security group blocking it, or the service is stuck)')
     if ('getaddrinfo' in low or 'name or service not known' in low
             or 'nodename nor servname' in low or 'winerror 11001' in low):
         return '地址无法解析（主机名写错或 DNS 异常）'
@@ -1080,7 +1135,7 @@ def server_auth():
     pwd = pwd.strip() if isinstance(pwd, str) else None
 
     if not user and not pwd:
-        return jsonify({'success': False, 'message': '用户名与密码都为空，未做任何修改'}), 400
+        return jsonify({'success': False, 'message': _m('用户名与密码都为空，未做任何修改', 'Username and password are both empty; nothing changed')}), 400
 
     ok, msg = update_frps_webserver_auth(user, pwd or None)
     return jsonify({'success': ok, 'message': msg, 'need_restart': ok})
@@ -1097,11 +1152,11 @@ def server_probe():
     info = frps_api_info()
     if not info.get('enabled'):
         return jsonify({'ok': False, 'status': 0,
-                        'msg': info.get('error', '未启用管理API')})
+                        'msg': info.get('error', _m('未启用管理API', 'Management API is not enabled'))})
     try:
         import requests
     except ImportError:
-        return jsonify({'ok': False, 'status': 0, 'msg': '缺少 requests 库，无法探测'})
+        return jsonify({'ok': False, 'status': 0, 'msg': _m('缺少 requests 库，无法探测', 'The requests library is missing; cannot probe')})
 
     try:
         port = int(request.args.get('port') or info['port'])
@@ -1141,12 +1196,14 @@ def server_probe():
 
         if r.status_code == 200:
             return jsonify({'ok': True, 'status': 200, 'url': url, 'version': version,
-                            'msg': '连接成功' + (f' · frps {version}' if version else ''),
+                            'msg': _m('连接成功', 'Connected') + (f' · frps {version}' if version else ''),
                             'tried': tried, 'frps_running': frps_running})
         if r.status_code == 401:
             return jsonify({'ok': False, 'status': 401, 'url': url,
-                            'msg': '已连上但鉴权失败：[webServer] 的 user/password 不正确'
-                                   '（注意改完要重启 frps）',
+                            'msg': _m('已连上但鉴权失败：[webServer] 的 user/password 不正确'
+                                      '（注意改完要重启 frps）',
+                                      'Connected but authentication failed: the [webServer] '
+                                      'user/password is wrong (restart frps after changing it)'),
                             'tried': tried, 'frps_running': frps_running})
         tried.append({'url': url, 'error': f'HTTP {r.status_code}'})
 
@@ -1154,10 +1211,13 @@ def server_probe():
     all_refused = all('连接被拒绝' in t['error'] for t in tried if t.get('error'))
     hints = []
     if frps_running is False:
-        hints.append('frps 当前未运行：到「控制中心」把操作目标选成「服务端 (frps)」后点启动')
+        hints.append(_m('frps 当前未运行：到「控制中心」把操作目标选成「服务端 (frps)」后点启动',
+                        'frps is not running: pick "Server (frps)" as the target in the Control Center and start it'))
     if frps_running is True and all_refused:
-        hints.append('frps 进程在跑，但配置里的管理端口没被监听：'
-                     '多半是刚改完 [webServer] 还没重启 frps')
+        hints.append(_m('frps 进程在跑，但配置里的管理端口没被监听：'
+                        '多半是刚改完 [webServer] 还没重启 frps',
+                        'The frps process is running but the dashboard port is not listening: '
+                        'the [webServer] change probably needs an frps restart'))
     if all_refused:
         hints.append(f'在 frps 所在机器上确认监听：ss -ltnp | grep {port} '
                      f'（或 netstat -ano | findstr {port}）')
@@ -1190,11 +1250,14 @@ def server_probe():
                         '或在配置编辑器里改用 toml 写法（见下方示例）')
 
     if all_refused and frps_running is False:
-        msg = '连接失败：frps 未运行，该端口没有进程监听'
+        msg = _m('连接失败：frps 未运行，该端口没有进程监听',
+                 'Connection failed: frps is not running and nothing is listening on that port')
     elif all_refused:
-        msg = '连接失败：目标端口没有进程监听'
+        msg = _m('连接失败：目标端口没有进程监听',
+                 'Connection failed: nothing is listening on the target port')
     else:
-        msg = '连接失败：候选地址均不可用'
+        msg = _m('连接失败：候选地址均不可用',
+                 'Connection failed: none of the candidate addresses work')
     detail = '; '.join(f"{t['url']} → {t['error']}" for t in tried)
     return jsonify({'ok': False, 'status': last_status, 'msg': msg, 'detail': detail,
                     'tried': tried, 'hints': hints, 'frps_running': frps_running,
@@ -1232,7 +1295,7 @@ def config_endpoint(config_type):
     # 注意：函数名不能叫 config，否则会覆盖模块级的配置字典 config
     m = app.config['FRP_MANAGER']
     if config_type not in ('client', 'server'):
-        return jsonify({'success': False, 'message': '配置类型仅支持 client / server'}), 400
+        return jsonify({'success': False, 'message': _m('配置类型仅支持 client / server', 'Config type must be client or server')}), 400
 
     if request.method == 'GET':
         # 不存在时自动生成一份可用的默认配置，避免编辑器空白
@@ -1252,21 +1315,21 @@ def config_endpoint(config_type):
     try:
         target_path = m.save_config(config_type, content)
         if not target_path:
-            return jsonify({'success': False, 'message': '配置保存失败'}), 500
+            return jsonify({'success': False, 'message': _m('配置保存失败', 'Failed to save config')}), 500
         print(f"[DEBUG] 配置已保存: {target_path}")
         try:
             m.audit_event('save_config', config_type, 'success',
                           f'{len(content)} 字符', request.remote_addr)
         except Exception:
             pass
-        return jsonify({'success': True, 'message': '配置保存成功', 'file': target_path})
+        return jsonify({'success': True, 'message': _m('配置保存成功', 'Config saved'), 'file': target_path})
     except Exception as e:
         print(f"[ERROR] 保存配置失败: {e}")
         try:
             m.audit_event('save_config', config_type, 'fail', str(e), request.remote_addr)
         except Exception:
             pass
-        return jsonify({'success': False, 'message': f'配置保存失败: {e}'}), 500
+        return jsonify({'success': False, 'message': _m(f'配置保存失败: {e}', f'Failed to save config: {e}')}), 500
 
 @app.route('/api/settings', methods=['GET', 'POST'])
 def settings():
@@ -1276,12 +1339,12 @@ def settings():
 
     new_port = request.form.get('port', type=int)
     if not new_port:
-        return jsonify({'success': False, 'message': '端口无效'}), 400
+        return jsonify({'success': False, 'message': _m('端口无效', 'Invalid port')}), 400
     if not (1024 <= new_port <= 65535):
         return jsonify({'success': False,
-                        'message': '端口无效，请使用1024-65535之间的端口'}), 400
+                        'message': _m('端口无效，请使用1024-65535之间的端口', 'Invalid port; use a port between 1024 and 65535')}), 400
     if new_port == config['WEB_PORT']:
-        return jsonify({'success': True, 'message': f'端口未变化（{new_port}）',
+        return jsonify({'success': True, 'message': _m(f'端口未变化（{new_port}）', f'Port unchanged ({new_port})'),
                         'port': new_port})
 
     # 端口被占用时提前提示，避免重启后起不来
@@ -1290,7 +1353,7 @@ def settings():
         s.settimeout(1)
         if s.connect_ex(('127.0.0.1', new_port)) == 0:
             return jsonify({'success': False,
-                            'message': f'端口 {new_port} 已被其它程序占用'}), 400
+                            'message': _m(f'端口 {new_port} 已被其它程序占用', f'Port {new_port} is already in use')}), 400
 
     config['WEB_PORT'] = new_port
     config_dir = config['FRP_CONFIG_DIR']
@@ -1299,7 +1362,7 @@ def settings():
     with open(port_file, 'w', encoding='utf-8') as f:
         f.write(f'port = {new_port}\n')
     return jsonify({'success': True,
-                    'message': f'端口已修改为 {new_port}，请重启应用生效',
+                    'message': _m(f'端口已修改为 {new_port}，请重启应用生效', f'Port changed to {new_port}; restart the app to apply'),
                     'port': new_port})
 
 
@@ -1399,7 +1462,7 @@ def api_proxies():
     data = request.get_json(silent=True) or {}
     proxies = data.get('proxies')
     if not isinstance(proxies, list):
-        return jsonify({'success': False, 'message': 'proxies 必须是数组'}), 400
+        return jsonify({'success': False, 'message': _m('proxies 必须是数组', 'proxies must be an array')}), 400
     ok, msg = m.set_client_proxies(proxies)
     if ok:
         m.audit_event('edit_proxies', 'client', 'success',
@@ -1417,6 +1480,16 @@ def api_i18n():
     if lang not in ('zh', 'en'):
         lang = 'zh'
     m.save_app_settings({'lang': lang})
+    # 立刻作废各模块的语言缓存：否则紧接着重新拉取的接口仍会按旧语言返回文案，
+    # 表现为「切了语言但页面里还残留几句中文」。
+    _MSG_LANG['at'] = 0.0
+    _MSG_LANG['lang'] = lang
+    for _name in ('web_auth', 'frp_manager'):
+        _mod = sys.modules.get(_name)
+        _cache = getattr(_mod, '_MSG_LANG', None) if _mod else None
+        if isinstance(_cache, dict):
+            _cache['at'] = 0.0
+            _cache['lang'] = lang
     return jsonify({'success': True, 'lang': lang})
 
 
@@ -1431,14 +1504,14 @@ def settings_snapshot():
                         'auto_snapshot': m.load_app_settings().get('auto_snapshot', True)})
     data = request.get_json(silent=True) or {}
     ok = m.save_app_settings({'auto_snapshot': bool(data.get('auto_snapshot', True))})
-    return jsonify({'success': ok, 'message': '快照设置已保存'})
+    return jsonify({'success': ok, 'message': _m('快照设置已保存', 'Snapshot settings saved')})
 
 
 @app.route('/api/snapshots/<config_type>', methods=['GET'])
 def snapshots_list(config_type):
     m = app.config['FRP_MANAGER']
     if config_type not in ('client', 'server'):
-        return jsonify({'success': False, 'message': '配置类型仅支持 client / server'}), 400
+        return jsonify({'success': False, 'message': _m('配置类型仅支持 client / server', 'Config type must be client or server')}), 400
     return jsonify({'success': True, 'snapshots': m.list_snapshots(config_type)})
 
 
@@ -1446,14 +1519,14 @@ def snapshots_list(config_type):
 def snapshot_detail(config_type, snapshot_id):
     m = app.config['FRP_MANAGER']
     if config_type not in ('client', 'server'):
-        return jsonify({'success': False, 'message': '配置类型仅支持 client / server'}), 400
+        return jsonify({'success': False, 'message': _m('配置类型仅支持 client / server', 'Config type must be client or server')}), 400
     if request.method == 'DELETE':
         m.delete_snapshot(config_type, snapshot_id)
         m.audit_event('delete_snapshot', config_type, 'success', snapshot_id, request.remote_addr)
-        return jsonify({'success': True, 'message': '已删除快照'})
+        return jsonify({'success': True, 'message': _m('已删除快照', 'Snapshot deleted')})
     content = m.read_snapshot(config_type, snapshot_id)
     if content is None:
-        return jsonify({'success': False, 'message': '快照不存在'}), 404
+        return jsonify({'success': False, 'message': _m('快照不存在', 'Snapshot not found')}), 404
     return jsonify({'success': True, 'content': content})
 
 
@@ -1464,7 +1537,7 @@ def snapshot_rollback():
     config_type = data.get('config_type')
     snapshot_id = data.get('snapshot_id')
     if config_type not in ('client', 'server') or not snapshot_id:
-        return jsonify({'success': False, 'message': '参数缺失'}), 400
+        return jsonify({'success': False, 'message': _m('参数缺失', 'Missing parameters')}), 400
     ok, msg = m.rollback_snapshot(config_type, snapshot_id)
     if ok:
         m.audit_event('rollback', config_type, 'success', snapshot_id, request.remote_addr)
@@ -1489,7 +1562,7 @@ def security_apply_token():
     data = request.get_json(silent=True) or {}
     token = (data.get('token') or '').strip()
     if not token:
-        return jsonify({'success': False, 'message': 'token 不能为空'}), 400
+        return jsonify({'success': False, 'message': _m('token 不能为空', 'token cannot be empty')}), 400
     results = m.set_auth_token(token, config_types=('client', 'server'))
     m.audit_event('apply_token', 'auth', 'success', 'token 已写入两端', request.remote_addr)
     return jsonify({'success': True, 'results': results})
@@ -1501,7 +1574,7 @@ def security_secure_proxy():
     data = request.get_json(silent=True) or {}
     proxy = data.get('proxy')
     if not isinstance(proxy, dict):
-        return jsonify({'success': False, 'message': 'proxy 必须是对象'}), 400
+        return jsonify({'success': False, 'message': _m('proxy 必须是对象', 'proxy must be an object')}), 400
     ok, msg = m.add_secure_proxy(proxy)
     if ok:
         m.audit_event('add_secure_proxy', 'client', 'success',
@@ -1536,7 +1609,7 @@ def settings_monitor():
     m.audit_event('monitor_settings', 'watchdog', 'success',
                   'enabled=%s max_crashes=%s' % (data.get('watchdog_enabled'), max_c),
                   request.remote_addr)
-    return jsonify({'success': True, 'message': '进程自愈设置已保存'})
+    return jsonify({'success': True, 'message': _m('进程自愈设置已保存', 'Watchdog settings saved')})
 
 
 # --------------------------------------------------------------------- #
@@ -1559,7 +1632,7 @@ def settings_autorestart():
     restart_time = str(data.get('auto_restart_time') or '04:00').strip()
     hm = m._parse_hhmm(restart_time)
     if hm is None:
-        return jsonify({'success': False, 'message': '重启时刻格式应为 HH:MM（如 04:00）'}), 400
+        return jsonify({'success': False, 'message': _m('重启时刻格式应为 HH:MM（如 04:00）', 'Restart time must be in HH:MM format (e.g. 04:00)')}), 400
     restart_time = '%02d:%02d' % hm
     ok = m.save_app_settings({
         'auto_restart_enabled': bool(data.get('auto_restart_enabled', False)),
@@ -1570,7 +1643,7 @@ def settings_autorestart():
         'auto_restart_frps': bool(data.get('auto_restart_frps', True)),
     })
     if not ok:
-        return jsonify({'success': False, 'message': '保存设置失败（查看控制台日志）'}), 500
+        return jsonify({'success': False, 'message': _m('保存设置失败（查看控制台日志）', 'Failed to save settings (see the console log)')}), 500
     m.write_event('设置已更新 · 定时重启=%s 模式=%s 间隔=%sh 时刻=%s frpc=%s frps=%s'
                   % (data.get('auto_restart_enabled'), mode, hours, restart_time,
                      data.get('auto_restart_frpc'), data.get('auto_restart_frps')))
@@ -1578,7 +1651,7 @@ def settings_autorestart():
                   'enabled=%s mode=%s interval=%sh time=%s' %
                   (data.get('auto_restart_enabled'), mode, hours, restart_time),
                   request.remote_addr)
-    return jsonify({'success': True, 'message': '定时重启设置已保存'})
+    return jsonify({'success': True, 'message': _m('定时重启设置已保存', 'Scheduled restart settings saved')})
 
 
 # --------------------------------------------------------------------- #
@@ -1612,7 +1685,7 @@ def log_rotate_api():
     m = app.config['FRP_MANAGER']
     n = m.rotate_now(manual=True)
     m.audit_event('log_rotate', 'logs', 'success', 'rotated=%d' % n, request.remote_addr)
-    return jsonify({'success': True, 'message': f'已轮转 {n} 个日志文件'})
+    return jsonify({'success': True, 'message': _m(f'已轮转 {n} 个日志文件', f'Rotated {n} log files')})
 
 
 @app.route('/api/log/download')
@@ -1636,12 +1709,12 @@ def import_frp_api():
     m = app.config['FRP_MANAGER']
     f = request.files.get('file')
     if not f or not f.filename:
-        return jsonify({'success': False, 'message': '未收到文件'}), 400
+        return jsonify({'success': False, 'message': _m('未收到文件', 'No file received')}), 400
     fname = f.filename
     low = fname.lower()
     if not (low.endswith('.zip') or low.endswith('.tar.gz') or low.endswith('.tgz')):
         return jsonify({'success': False,
-                        'message': '仅支持 .zip / .tar.gz 压缩包'}), 400
+                        'message': _m('仅支持 .zip / .tar.gz 压缩包', 'Only .zip / .tar.gz archives are supported')}), 400
     import tempfile as _tf
     tmp = os.path.join(config['TEMP_DIR'], 'import_' + fname)
     try:
@@ -1683,7 +1756,7 @@ def settings_alert():
                   % (data.get('alert_enabled'), data.get('alert_type')))
     m.audit_event('alert_settings', str(data.get('alert_type') or ''), 'success',
                   'enabled=%s' % data.get('alert_enabled'), request.remote_addr)
-    return jsonify({'success': True, 'message': '掉线告警设置已保存'})
+    return jsonify({'success': True, 'message': _m('掉线告警设置已保存', 'Alert settings saved')})
 
 
 @app.route('/api/settings/alert/test', methods=['POST'])
@@ -1691,10 +1764,11 @@ def alert_test():
     m = app.config['FRP_MANAGER']
     s = m.load_app_settings()
     if not s.get('alert_enabled'):
-        return jsonify({'success': False, 'message': '告警未启用，请先开启'}), 400
+        return jsonify({'success': False, 'message': _m('告警未启用，请先开启', 'Alerts are disabled; enable them first')}), 400
     ok = m.send_alert('这是一条测试告警，FRP Manager 连接正常 ✅', title='FRP 告警测试')
     return jsonify({'success': ok,
-                    'message': '测试告警已发送' if ok else '发送失败（检查地址/网络/账号）'})
+                    'message': _m('测试告警已发送', 'Test alert sent') if ok
+                    else _m('发送失败（检查地址/网络/账号）', 'Send failed (check the URL / network / credentials)')})
 
 
 @app.route('/api/start', methods=['POST'])
@@ -1728,12 +1802,12 @@ def start():
         except Exception:
             pass
         return jsonify({'success': True,
-                        'message': f'{message}（配置文件：{config_file}）',
+                        'message': _m(f'{message}（配置文件：{config_file}）', f'{message} (config: {config_file})'),
                         'mode': mode, 'config': config_file})
     log_event(f"启动 {label} 失败 · {message}")
     m.audit_event('start_frp', mode, 'fail', message, request.remote_addr)
     return jsonify({'success': False,
-                    'message': f'{message}（配置文件：{config_file}）',
+                    'message': _m(f'{message}（配置文件：{config_file}）', f'{message} (config: {config_file})'),
                     'mode': mode, 'config': config_file}), 500
 
 
@@ -1754,10 +1828,10 @@ def stop():
             log_event(f"停止 {label} 失败 · 进程仍在运行")
             m.audit_event('stop_frp', mode, 'fail', '进程仍在运行', request.remote_addr)
             return jsonify({'success': False,
-                            'message': f'FRP {mode} 仍在运行，请查看日志'}), 500
+                            'message': _m(f'FRP {mode} 仍在运行，请查看日志', f'FRP {mode} is still running; check the logs')}), 500
         log_event(f"停止 {label} 完成")
         m.audit_event('stop_frp', mode, 'success', '', request.remote_addr)
-        return jsonify({'success': True, 'message': f'FRP {mode} 已停止'})
+        return jsonify({'success': True, 'message': _m(f'FRP {mode} 已停止', f'FRP {mode} stopped')})
     else:
         # 全部停止
         m.stop_frp()
@@ -1766,12 +1840,12 @@ def stop():
         if s['client']['running'] or s['server']['running']:
             log_event('全部停止失败 · 仍有 FRP 进程在运行')
             m.audit_event('stop_frp', 'all', 'fail', '仍有 FRP 进程在运行', request.remote_addr)
-            return jsonify({'success': False, 'message': '仍有 FRP 进程在运行'}), 500
+            return jsonify({'success': False, 'message': _m('仍有 FRP 进程在运行', 'FRP processes are still running')}), 500
         log_event('全部停止完成 · frpc + frps 均已停止'
                   + (f'（清理 {killed} 个残留进程）' if killed else ''))
         m.audit_event('stop_frp', 'all', 'success', f'清理 {killed} 个残留进程', request.remote_addr)
         return jsonify({'success': True,
-                        'message': 'FRP 已全部停止'
+                        'message': _m('FRP 已全部停止', 'All FRP processes stopped')
                         + (f'（清理 {killed} 个进程）' if killed else '')})
 
 
@@ -1792,7 +1866,7 @@ def restart():
         ok, msg = check_client_server_addr(config_file)
         if not ok:
             log_event(f"重启 {label} 失败 · {msg}")
-            return jsonify({'success': False, 'message': f'FRP 重启失败: {msg}',
+            return jsonify({'success': False, 'message': _m(f'FRP 重启失败: {msg}', f'Failed to restart FRP: {msg}'),
                             'mode': mode, 'config': config_file}), 400
     success, message = m.start_frp(config_file, mode)
     if success:
@@ -1804,11 +1878,11 @@ def restart():
         except Exception:
             pass
         return jsonify({'success': True,
-                        'message': f'FRP 重启成功（配置文件：{config_file}）'})
+                        'message': _m(f'FRP 重启成功（配置文件：{config_file}）', f'FRP restarted (config: {config_file})')})
     log_event(f"重启 {label} 失败 · {message}")
     m.audit_event('restart_frp', mode, 'fail', message, request.remote_addr)
     return jsonify({'success': False,
-                    'message': f'FRP 重启失败: {message}（配置文件：{config_file}）'}), 500
+                    'message': _m(f'FRP 重启失败: {message}（配置文件：{config_file}）', f'Failed to restart FRP: {message} (config: {config_file})')}), 500
 
 
 @app.route('/api/links')
@@ -1842,13 +1916,14 @@ def log():
                '[frps] ' if mode == 'server' else
                '[面板] ' if mode == 'webui' else '[frp] ')
         if running:
-            log_content = (tip + f"当前运行: {', '.join(running)}\n"
-                           + tip + f"平台: {m.platform_summary()}\n"
-                           + tip + "暂无输出（日志可能刚被清空，或进程静默运行）")
+            log_content = (tip + _m(f"当前运行: {', '.join(running)}", f"Running: {', '.join(running)}") + "\n"
+                           + tip + _m(f"平台: {m.platform_summary()}", f"Platform: {m.platform_summary()}") + "\n"
+                           + tip + _m("暂无输出（日志可能刚被清空，或进程静默运行）",
+                                      "No output yet (the log may have just been cleared, or the process is running quietly)"))
         else:
-            log_content = (tip + "FRP 未运行\n"
-                           + tip + f"平台: {m.platform_summary()}\n"
-                           + tip + "请到「控制中心」点击启动")
+            log_content = (tip + _m("FRP 未运行", "FRP is not running") + "\n"
+                           + tip + _m(f"平台: {m.platform_summary()}", f"Platform: {m.platform_summary()}") + "\n"
+                           + tip + _m("请到「控制中心」点击启动", "Start it from the Control Center"))
 
     return jsonify({'content': log_content, 'mode': mode,
                     'files': [os.path.basename(str(p)) for p in m.log_files(mode)]})
@@ -1859,7 +1934,7 @@ def log_clear():
     """清空 logs/ 下的 frp 运行日志"""
     m = app.config['FRP_MANAGER']
     n = m.clear_frp_logs()
-    return jsonify({'success': True, 'message': f'已清空 {n} 个日志文件'})
+    return jsonify({'success': True, 'message': _m(f'已清空 {n} 个日志文件', f'Cleared {n} log files')})
 
 @app.route('/api/generate-config', methods=['POST'])
 def generate_config():

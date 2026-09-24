@@ -17,7 +17,7 @@ import threading
 import subprocess
 import importlib
 
-VERSION = '1.13.1'
+VERSION = '1.13.2'
 
 
 # ---------------------------------------------------------------------- #
@@ -1014,12 +1014,17 @@ def main():
         issues = frp_manager.scan_security()
         if issues:
             hi = [i for i in issues if i['level'] == 'high']
-            frp_manager.write_event(f"配置安全扫描：发现 {len(issues)} 项风险"
-                                   f"（高危 {len(hi)} 项），详见「安全扫描」页")
+            frp_manager.write_event(frp_manager._m(
+                f"配置安全扫描：发现 {len(issues)} 项风险（高危 {len(hi)} 项），详见「安全扫描」页",
+                f"Security scan: {len(issues)} risk(s) found ({len(hi)} high), see the Security Scan page"))
             for i in issues:
-                frp_manager.write_event(f"安全[{i['level']}][{i['mode']}] {i['msg']}")
+                frp_manager.write_event(f"Security[{i['level']}][{i['mode']}] {i['msg']}"
+                                        if frp_manager._msg_lang() == 'en'
+                                        else f"安全[{i['level']}][{i['mode']}] {i['msg']}")
         else:
-            frp_manager.write_event("配置安全扫描：未发现明显风险项")
+            frp_manager.write_event(frp_manager._m(
+                "配置安全扫描：未发现明显风险项",
+                "Security scan: no obvious risks found"))
     except Exception as e:
         print(f"[WARN] 配置安全扫描失败: {e}")
 

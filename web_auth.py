@@ -53,6 +53,8 @@ _APP = None
 # 不需要登录即可访问的路径前缀
 _OPEN_PREFIX = (
     '/login', '/static/', '/api/login', '/api/captcha', '/favicon.ico',
+    # 界面语言偏好：登录页也要能读写，否则登录页无法跟随/切换语言
+    '/api/i18n',
 )
 
 
@@ -383,7 +385,7 @@ def api_captcha():
 def api_login():
     a = load_auth_config(_CONFIG)
     if not a['enabled']:
-        return jsonify({'success': True, 'message': '未启用登录保护', 'redirect': '/'})
+        return jsonify({'success': True, 'message': _m('未启用登录保护', 'Login protection is disabled'), 'redirect': '/'})
 
     d = request.get_json(silent=True) or request.form or {}
     user = str(d.get('user') or '').strip()
@@ -395,7 +397,7 @@ def api_login():
 
     if not secrets.compare_digest(user, a['username']) or not password_ok(a['password'], pwd):
         session.pop('cap', None)
-        return jsonify({'success': False, 'message': '账号或密码不正确',
+        return jsonify({'success': False, 'message': _m('账号或密码不正确', 'Incorrect username or password'),
                         'field': 'pwd', 'refresh_captcha': True})
 
     if a['captcha']:
@@ -403,7 +405,7 @@ def api_login():
         exp = int(session.get('cap_exp') or 0)
         if not cap or time.time() > exp or not secrets.compare_digest(code, cap):
             session.pop('cap', None)
-            return jsonify({'success': False, 'message': '验证码不正确或已过期',
+            return jsonify({'success': False, 'message': _m('验证码不正确或已过期', 'Captcha is incorrect or expired'),
                             'field': 'code', 'refresh_captcha': True})
 
     session.pop('cap', None)
@@ -424,7 +426,7 @@ def api_login():
     nxt = str(d.get('next') or '/')
     if not nxt.startswith('/') or nxt.startswith('//'):
         nxt = '/'
-    return jsonify({'success': True, 'message': '验证通过', 'redirect': nxt})
+    return jsonify({'success': True, 'message': _m('验证通过', 'Verified'), 'redirect': nxt})
 
 
 @auth_bp.route('/api/auth/config', methods=['GET', 'POST'])
@@ -487,6 +489,39 @@ def _logged_in(a=None):
     return True
 
 
+# ---------------------------------------------------------------- 消息多语言
+_MSG_LANG = {'at': 0.0, 'lang': 'zh'}
+
+
+def _msg_lang():
+    now = time.time()
+    if now - _MSG_LANG['at'] < 2.0:
+        return _MSG_LANG['lang']
+    lang = 'zh'
+    try:
+        import configparser
+        d = _CONFIG.get('FRP_CONFIG_DIR') or os.path.join(os.getcwd(), 'configs')
+        f = os.path.join(d, 'app_settings.ini')
+        if os.path.exists(f):
+            cp = configparser.ConfigParser()
+            cp.read(f, encoding='utf-8')
+            if cp.has_section('ui') and cp.has_option('ui', 'lang'):
+                if cp.get('ui', 'lang').strip().lower().startswith('en'):
+                    lang = 'en'
+    except Exception:
+        pass
+    _MSG_LANG['at'] = now
+    _MSG_LANG['lang'] = lang
+    return lang
+
+
+def _m(zh, en=None):
+    """按当前界面语言返回提示；英文缺省时回退中文"""
+    if _msg_lang() != 'en':
+        return zh
+    return en if en else zh
+
+
 def _need_json():
     return (request.path.startswith('/api/')
             or 'application/json' in (request.headers.get('Accept') or ''))
@@ -506,9 +541,9 @@ def _guard():
     if _logged_in(a):
         return None
     if p == '/api/auth/config':
-        return jsonify({'success': False, 'message': '未登录', 'need_login': True}), 401
+        return jsonify({'success': False, 'message': _m('未登录', 'Not signed in'), 'need_login': True}), 401
     if _need_json():
-        return jsonify({'success': False, 'message': '登录已失效，请重新登录',
+        return jsonify({'success': False, 'message': _m('登录已失效，请重新登录', 'Session expired, please sign in again'),
                         'need_login': True}), 401
     nxt = p
     if request.query_string:
