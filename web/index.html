@@ -131,14 +131,27 @@
         .dl-status{font-size:0.76rem; color:var(--txt2); margin-top:5px;
                 font-family:'JetBrains Mono',Consolas,monospace}
         .btn{padding:9px 18px; border:none; border-radius:9px; cursor:pointer; font-size:0.9em; font-weight:600;
-            transition:all .25s; flex:1; min-width:110px; max-width:170px; color:#04121a; font-family:inherit}
-        .btn:hover{transform:translateY(-2px); box-shadow:0 6px 18px rgba(0,0,0,.18); filter:brightness(1.06)}
-        .btn:disabled{opacity:.5; cursor:not-allowed; transform:none}
-        .btn-success{background:linear-gradient(135deg,#22d3ee,#34d399); color:#04121a}
-        .btn-danger{background:linear-gradient(135deg,#fb7185,#ef4444); color:#fff}
-        .btn-primary{background:linear-gradient(135deg,#22d3ee,#6366f1); color:#04121a}
-        .btn-secondary{background:var(--panel2); color:var(--txt); border:1px solid var(--line)}
-        .btn-warning{background:linear-gradient(135deg,#fbbf24,#f97316); color:#3a2400}
+            transition:all .25s; flex:1; min-width:110px; max-width:170px; color:#04121a; font-family:inherit; letter-spacing:.3px}
+        .btn:hover{transform:translateY(-2px); filter:brightness(1.07)}
+        .btn:active{transform:translateY(0)}
+        .btn:disabled{opacity:.5; cursor:not-allowed; transform:none; filter:none; box-shadow:none}
+        .btn:focus-visible{outline:2px solid var(--cyan); outline-offset:2px}
+        .btn-success{background:linear-gradient(135deg,#22d3ee,#34d399); color:#04121a;
+            box-shadow:0 6px 18px rgba(34,211,238,.22)}
+        .btn-success:hover{box-shadow:0 10px 26px rgba(34,211,238,.38)}
+        .btn-primary{background:linear-gradient(135deg,#22d3ee,#6366f1); color:#04121a;
+            box-shadow:0 6px 18px rgba(99,102,241,.24)}
+        .btn-primary:hover{box-shadow:0 10px 26px rgba(99,102,241,.42)}
+        .btn-danger{background:linear-gradient(135deg,#fb7185,#ef4444); color:#fff;
+            box-shadow:0 6px 18px rgba(239,68,68,.22)}
+        .btn-danger:hover{box-shadow:0 10px 26px rgba(239,68,68,.4)}
+        .btn-warning{background:linear-gradient(135deg,#fbbf24,#f97316); color:#3a2400;
+            box-shadow:0 6px 18px rgba(249,115,22,.22)}
+        /* 次级 = 玻璃幽灵按钮：默认半透明、细描边，悬停泛青色辉光（科技感） */
+        .btn-secondary{background:rgba(34,211,238,.06); color:var(--txt); border:1px solid var(--line);
+            box-shadow:inset 0 0 0 1px rgba(34,211,238,.04)}
+        .btn-secondary:hover{color:var(--cyan); border-color:rgba(34,211,238,.5);
+            background:rgba(34,211,238,.12); box-shadow:0 0 16px rgba(34,211,238,.22)}
         /* 工具栏 / 标题栏里的按钮不参与 .btn 的等分拉伸 */
         .section-head .btn, .log-toolbar .btn, .audit-tools .btn, .sec-audit-tools .btn
         {flex:0 0 auto; min-width:auto; max-width:none; padding:7px 14px}
@@ -511,7 +524,7 @@
         </div>
         <nav class="sidebar-nav">
             {# 树形目录：一级 = 页面，缩进二级 = 该页里的段落（顺序与页面自上而下完全一致） #}
-            <a class="nav-item cur" href="#" data-page="dashboard">运行状态</a>
+            <a class="nav-item cur" href="#" data-page="dashboard" data-i18n="nav.dashboard">运行状态</a>
             <div class="nav-sub nav-dash">
                 <a class="nav-item nav-dash active" href="#sec-status" data-i18n="nav.status">运行状态</a>
                 <a class="nav-item nav-dash" href="#sec-watchdog" data-i18n="nav.watchdog">进程自愈守护</a>
@@ -520,7 +533,7 @@
                 <a class="nav-item nav-dash" href="#sec-traffic" data-i18n="nav.traffic">流量监控</a>
             </div>
 
-            <a class="nav-item" href="#" data-page="settings">配置与下载</a>
+            <a class="nav-item" href="#" data-page="settings" data-i18n="nav.settings">配置与下载</a>
             <div class="nav-sub nav-sets" style="display:none">
                 <a class="nav-item nav-sets" href="#sec-config" data-i18n="nav.config">配置编辑器</a>
                 <a class="nav-item nav-sets" href="#sec-snapshots" data-i18n="nav.snapshots">配置快照</a>
@@ -529,20 +542,20 @@
                 <a class="nav-item nav-sets" href="#sec-templates" data-i18n="nav.templates">配置模板库</a>
             </div>
 
-            <a class="nav-item" href="#" data-page="system">系统设置</a>
+            <a class="nav-item" href="#" data-page="system" data-i18n="nav.system">系统设置</a>
             <div class="nav-sub nav-sys" style="display:none">
                 <a class="nav-item nav-sys" href="#sec-bins" data-i18n="nav.bins">frp 版本控制</a>
                 <a class="nav-item nav-sys" href="#sec-web" data-i18n="nav.web">Web 设置</a>
                 <a class="nav-item nav-sys" href="#sec-daemon" data-i18n="nav.daemon">守护与告警</a>
             </div>
 
-            <a class="nav-item" href="#" data-page="security">安全中心</a>
+            <a class="nav-item" href="#" data-page="security" data-i18n="nav.securitypage">安全中心</a>
             <div class="nav-sub nav-sec" style="display:none">
                 <a class="nav-item nav-sec" href="#sec-wizard" data-i18n="nav.wizard">安全向导</a>
                 <a class="nav-item nav-sec" href="#sec-security" data-i18n="nav.security">配置安全扫描</a>
             </div>
 
-            <a class="nav-item" href="#" data-page="logs">运行日志</a>
+            <a class="nav-item" href="#" data-page="logs" data-i18n="nav.logs">运行日志</a>
             <a class="nav-item" href="#" data-page="audit" data-i18n="nav.audit">操作审计</a>
         </nav>
         <div class="sidebar-footer">
@@ -554,7 +567,7 @@
         <div class="topbar">
             <div class="tb-left">
                 <span class="tb-title">FRP Manager</span>
-                <span class="tb-sub" id="tbPageName">运行状态</span>
+                <span class="tb-sub" id="tbPageName" data-i18n="nav.dashboard">运行状态</span>
             </div>
             <div class="tb-right">
                 <span class="tb-live" title="Web UI 实时运行中"><i></i>实时</span>
@@ -577,7 +590,7 @@
 
             <div class="section" id="sec-status">
                 <div class="section-head">
-                    <h2>运行状态</h2>
+                    <h2 data-i18n="sec.status">运行状态</h2>
                     <span class="mode-pills">
                         <span class="pill pill-client"><i></i>客户端 frpc</span>
                         <span class="pill pill-server"><i></i>服务端 frps</span>
@@ -606,7 +619,7 @@
 
             <div class="section" id="sec-watchdog">
                 <div class="section-head">
-                    <h2>进程自愈守护</h2>
+                    <h2 data-i18n="sec.watchdog">进程自愈守护</h2>
                     <span class="wd-state" id="wdState">检查中…</span>
                 </div>
                 <p class="hint" style="margin-bottom:10px;">
@@ -629,7 +642,7 @@
 
             <div class="section" id="sec-portmap">
                 <div class="section-head">
-                    <h2>端口映射</h2>
+                    <h2 data-i18n="sec.portmap">端口映射</h2>
                     <span class="mode-pills">
                         <span class="pill pill-client"><i></i>客户端代理</span>
                         <span class="pill pill-server"><i></i>服务端端口</span>
@@ -649,7 +662,7 @@
 
             <div class="section" id="sec-status-info">
                 <div class="section-head">
-                    <h2>服务端连接信息</h2>
+                    <h2 data-i18n="sec.serverinfo">服务端连接信息</h2>
                     <button id="dsRefreshBtn" class="btn btn-primary" style="flex:0 0 auto;min-width:auto;max-width:none;padding:7px 14px;">刷新连接信息</button>
                 </div>
                 <p style="font-size:0.8em;color:var(--txt3);margin-bottom:10px;">
@@ -803,7 +816,7 @@ dashboard_pwd = 改成更复杂的</pre>
           <main id="pageSystem" style="display:none">
             <div class="section" id="sec-bins">
                 <div class="section-head">
-                    <h2>frp 版本控制</h2>
+                    <h2 data-i18n="sec.bins">frp 版本控制</h2>
                     <button id="downloadFrpBtn" class="btn btn-primary" style="flex:0 0 auto;min-width:auto;max-width:none;padding:7px 14px;">下载 / 更新 FRP</button>
                     <button id="checkUpdateBtn" class="btn btn-secondary" style="flex:0 0 auto;min-width:auto;max-width:none;padding:7px 14px;">检查更新</button>
                 </div>
@@ -859,7 +872,7 @@ dashboard_pwd = 改成更复杂的</pre>
                 <div class="form-row">
                     <div class="form-group">
                         <label>frpc（客户端）可用版本:</label>
-                        <div class="vsel" id="frpcVerSel" data-mode="client" data-empty="扫描中…">
+                        <div class="vsel" id="frpcVerSel" data-mode="client">
                             <button type="button" class="vsel-btn" aria-haspopup="listbox" aria-expanded="false">
                                 <span class="vsel-main">
                                     <span class="vsel-ver">扫描中…</span>
@@ -872,7 +885,7 @@ dashboard_pwd = 改成更复杂的</pre>
                     </div>
                     <div class="form-group">
                         <label>frps（服务端）可用版本:</label>
-                        <div class="vsel" id="frpsVerSel" data-mode="server" data-empty="扫描中…">
+                        <div class="vsel" id="frpsVerSel" data-mode="server">
                             <button type="button" class="vsel-btn" aria-haspopup="listbox" aria-expanded="false">
                                 <span class="vsel-main">
                                     <span class="vsel-ver">扫描中…</span>
@@ -919,7 +932,7 @@ dashboard_pwd = 改成更复杂的</pre>
             </div>
 
             <div class="section" id="sec-web">
-                <div class="section-head"><h2>Web 设置</h2></div>
+                <div class="section-head"><h2 data-i18n="sec.web">Web 设置</h2></div>
                 <div class="form-group">
                     <label>Web端口:</label>
                     <input type="number" id="webPort" placeholder="1024-65535" value="5000" min="1024" max="65535">
@@ -1013,12 +1026,12 @@ dashboard_pwd = 改成更复杂的</pre>
 
             </div>
             <div class="section" id="sec-daemon">
-                <div class="section-head"><h2>守护与告警</h2></div>
+                <div class="section-head"><h2 data-i18n="sec.daemon">守护与告警</h2></div>
                 <p class="hint" style="margin-bottom:10px;">
                     进程自愈守护与掉线告警推送的开关统一在此设置；「运行状态 → 进程自愈守护」可查看实时情况。
                 </p>
                 <div class="sub-head">
-                    <h3>进程自愈</h3>
+                    <h3 data-i18n="sub.watchdog">进程自愈</h3>
                     <span class="sub-note" id="wdSettingNote">—</span>
                 </div>
                 <p class="hint">开启后，若 frpc / frps 在「期望运行」状态下意外退出，守护线程每 5 秒检测并自动拉起；连续崩溃超过上限则停止自启并告警，防止雪崩。</p>
@@ -1034,6 +1047,47 @@ dashboard_pwd = 改成更复杂的</pre>
                 <div class="control-group">
                     <button id="saveWatchdogBtn" class="btn btn-primary">保存自愈设置</button>
                     <button id="reloadWatchdogBtn" class="btn btn-secondary">重新读取</button>
+                </div>
+
+                <div class="auth-sep"></div>
+                <div class="sub-head">
+                    <h3>定时重启</h3>
+                    <span class="sub-note" id="arSettingNote">—</span>
+                </div>
+                <p class="hint">按固定间隔（小时）或每天指定时刻自动重启勾选的 frpc / frps，适合需要定期刷新连接、回收资源的场景；仅重启「正在运行或已登记自愈」的进程，不会擅自拉起未运行的 frp。</p>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="chk"><input type="checkbox" id="autoRestartEnabled"> 启用定时重启</label>
+                    </div>
+                    <div class="form-group">
+                        <label>触发方式:</label>
+                        <select id="autoRestartMode">
+                            <option value="interval">按间隔（每 N 小时）</option>
+                            <option value="daily">每天固定时刻</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>重启间隔（小时，1–720）:</label>
+                        <input type="number" id="autoRestartInterval" min="1" max="720" value="24">
+                    </div>
+                    <div class="form-group">
+                        <label>每天重启时刻（触发方式选「每天」时生效）:</label>
+                        <input type="time" id="autoRestartTime" value="04:00">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="chk"><input type="checkbox" id="autoRestartFrpc" checked> 重启 FRPC 客户端</label>
+                    </div>
+                    <div class="form-group">
+                        <label class="chk"><input type="checkbox" id="autoRestartFrps" checked> 重启 FRPS 服务端</label>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <button id="saveAutoRestartBtn" class="btn btn-primary">保存定时重启设置</button>
+                    <button id="reloadAutoRestartBtn" class="btn btn-secondary">重新读取</button>
                 </div>
 
                 <div class="auth-sep"></div>
@@ -1107,7 +1161,7 @@ dashboard_pwd = 改成更复杂的</pre>
 
           <main id="pageSettings" style="display:none">
             <div class="section" id="sec-config">
-                <h2>配置编辑器</h2>
+                <h2 data-i18n="sec.config">配置编辑器</h2>
                 <div class="form-group">
                     <label>配置类型:</label>
                     <div class="seg" id="configTypeSeg" role="tablist" aria-label="配置类型">
@@ -1157,7 +1211,7 @@ dashboard_pwd = 改成更复杂的</pre>
 
             <div class="section" id="sec-generator">
                 <div class="section-header" onclick="toggleSection('configGenerator')">
-                    <h2>配置生成器</h2>
+                    <h2 data-i18n="sec.generator">配置生成器</h2>
                     <span id="configGeneratorToggle" class="toggle-icon">▼</span>
                 </div>
                 <div class="config-generator" id="configGenerator" style="display:none;">
@@ -1345,7 +1399,7 @@ dashboard_pwd = 改成更复杂的</pre>
 
             <div class="section" id="sec-security">
                 <div class="section-head">
-                    <h2>配置安全扫描</h2>
+                    <h2 data-i18n="sec.security">配置安全扫描</h2>
                     <button id="scanSecurityBtn" class="btn btn-primary" style="flex:0 0 auto;min-width:auto;max-width:none;padding:7px 14px;">立即扫描</button>
                 </div>
                 <p class="hint">检查 frps / frpc 配置中的安全风险：管理面板是否暴露公网、是否设置鉴权 token、server_addr 是否误填 0.0.0.0 等。</p>
@@ -1359,7 +1413,7 @@ dashboard_pwd = 改成更复杂的</pre>
           <main id="pageLogs" style="display:none">
             <div class="section" id="sec-logs">
                 <div class="section-head">
-                    <h2>运行日志</h2>
+                    <h2 data-i18n="sec.logs">运行日志</h2>
                     <div class="log-toolbar">
                         <div class="seg" id="logModeSeg">
                             <button class="segbtn active" data-mode="all" type="button">全部</button>
@@ -1495,58 +1549,8 @@ let proxyCount = 1;
 function addProxy() {
     proxyCount++;
     const proxyHtml = `
-        <div class="proxy-item" data-index="${proxyCount - 1}">
-            <div class="proxy-header">
-                <span>代理 #${proxyCount}</span>
-                <button class="btn btn-danger btn-sm" onclick="removeProxy(${proxyCount - 1})">删除</button>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>代理名称:</label>
-                    <input type="text" class="proxy-name" placeholder="如: web" value="proxy-${proxyCount}">
-                </div>
-                <div class="form-group">
-                    <label>代理类型:</label>
-                    <select class="proxy-type" onchange="updateProxyFields(this)">
-                        <option value="tcp">TCP</option>
-                        <option value="udp">UDP</option>
-                        <option value="http">HTTP</option>
-                        <option value="https">HTTPS</option>
-                        <option value="stcp">STCP</option>
-                        <option value="xtcp">XTCP</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>本地IP:</label>
-                    <input type="text" class="local-ip" placeholder="如: 127.0.0.1" value="127.0.0.1">
-                </div>
-                <div class="form-group">
-                    <label>本地端口:</label>
-                    <input type="number" class="local-port" placeholder="如: 80" value="${6000 + proxyCount}">
-                </div>
-            </div>
-            <div class="form-row remote-row">
-                <div class="form-group">
-                    <label>远程端口:</label>
-                    <input type="number" class="remote-port" placeholder="如: 80" value="${6000 + proxyCount}">
-                </div>
-                <div class="form-group domain-group" style="display:none;">
-                    <label>自定义域名:</label>
-                    <input type="text" class="custom-domain" placeholder="如: web.example.com">
-                </div>
-            </div>
-            <div class="checkbox-group">
-                <label class="checkbox-label">
-                    <input type="checkbox" class="use-tls"> 启用TLS
-                </label>
-                <label class="checkbox-label">
-                    <input type="checkbox" class="use-stcp" style="display:none;"> STCP加密
-                </label>
-            </div>
-        </div>
-    `;
+        <div class="proxy-item" data-index="${proxyCount - 1}${tt("\">\r\n            <div class=\"proxy-header\">\r\n                <span>代理 #", "\">\r\n            <div class=\"proxy-header\">\r\n                <span>Proxy #")}${proxyCount}</span>
+                <button class="btn btn-danger btn-sm" onclick="removeProxy(${proxyCount - 1}${tt(")\">删除</button>\r\n            </div>\r\n            <div class=\"form-row\">\r\n                <div class=\"form-group\">\r\n                    <label>代理名称:</label>\r\n                    <input type=\"text\" class=\"proxy-name\" placeholder=\"如: web\" value=\"proxy-", ")\">Delete</button>\r\n            </div>\r\n            <div class=\"form-row\">\r\n                <div class=\"form-group\">\r\n                    <label>Proxy name:</label>\r\n                    <input type=\"text\" class=\"proxy-name\" placeholder=\"e.g. web\" value=\"proxy-")}${proxyCount}${tt("\">\r\n                </div>\r\n                <div class=\"form-group\">\r\n                    <label>代理类型:</label>\r\n                    <select class=\"proxy-type\" onchange=\"updateProxyFields(this)\">\r\n                        <option value=\"tcp\">TCP</option>\r\n                        <option value=\"udp\">UDP</option>\r\n                        <option value=\"http\">HTTP</option>\r\n                        <option value=\"https\">HTTPS</option>\r\n                        <option value=\"stcp\">STCP</option>\r\n                        <option value=\"xtcp\">XTCP</option>\r\n                    </select>\r\n                </div>\r\n            </div>\r\n            <div class=\"form-row\">\r\n                <div class=\"form-group\">\r\n                    <label>本地IP:</label>\r\n                    <input type=\"text\" class=\"local-ip\" placeholder=\"如: 127.0.0.1\" value=\"127.0.0.1\">\r\n                </div>\r\n                <div class=\"form-group\">\r\n                    <label>本地端口:</label>\r\n                    <input type=\"number\" class=\"local-port\" placeholder=\"如: 80\" value=\"", "\">\r\n                </div>\r\n                <div class=\"form-group\">\r\n                    <label>Proxy type:</label>\r\n                    <select class=\"proxy-type\" onchange=\"updateProxyFields(this)\">\r\n                        <option value=\"tcp\">TCP</option>\r\n                        <option value=\"udp\">UDP</option>\r\n                        <option value=\"http\">HTTP</option>\r\n                        <option value=\"https\">HTTPS</option>\r\n                        <option value=\"stcp\">STCP</option>\r\n                        <option value=\"xtcp\">XTCP</option>\r\n                    </select>\r\n                </div>\r\n            </div>\r\n            <div class=\"form-row\">\r\n                <div class=\"form-group\">\r\n                    <label>Local IP:</label>\r\n                    <input type=\"text\" class=\"local-ip\" placeholder=\"e.g. 127.0.0.1\" value=\"127.0.0.1\">\r\n                </div>\r\n                <div class=\"form-group\">\r\n                    <label>Local port:</label>\r\n                    <input type=\"number\" class=\"local-port\" placeholder=\"e.g. 80\" value=\"")}${6000 + proxyCount}${tt("\">\r\n                </div>\r\n            </div>\r\n            <div class=\"form-row remote-row\">\r\n                <div class=\"form-group\">\r\n                    <label>远程端口:</label>\r\n                    <input type=\"number\" class=\"remote-port\" placeholder=\"如: 80\" value=\"", "\">\r\n                </div>\r\n            </div>\r\n            <div class=\"form-row remote-row\">\r\n                <div class=\"form-group\">\r\n                    <label>Remote port:</label>\r\n                    <input type=\"number\" class=\"remote-port\" placeholder=\"e.g. 80\" value=\"")}${6000 + proxyCount}${tt("\">\r\n                </div>\r\n                <div class=\"form-group domain-group\" style=\"display:none;\">\r\n                    <label>自定义域名:</label>\r\n                    <input type=\"text\" class=\"custom-domain\" placeholder=\"如: web.example.com\">\r\n                </div>\r\n            </div>\r\n            <div class=\"checkbox-group\">\r\n                <label class=\"checkbox-label\">\r\n                    <input type=\"checkbox\" class=\"use-tls\"> 启用TLS\r\n                </label>\r\n                <label class=\"checkbox-label\">\r\n                    <input type=\"checkbox\" class=\"use-stcp\" style=\"display:none;\"> STCP加密\r\n                </label>\r\n            </div>\r\n        </div>\r\n    ", "\">\r\n                </div>\r\n                <div class=\"form-group domain-group\" style=\"display:none;\">\r\n                    <label>Custom domain:</label>\r\n                    <input type=\"text\" class=\"custom-domain\" placeholder=\"e.g. web.example.com\">\r\n                </div>\r\n            </div>\r\n            <div class=\"checkbox-group\">\r\n                <label class=\"checkbox-label\">\r\n                    <input type=\"checkbox\" class=\"use-tls\"> Enable TLS\r\n                </label>\r\n                <label class=\"checkbox-label\">\r\n                    <input type=\"checkbox\" class=\"use-stcp\" style=\"display:none;\"> Enable STCP\r\n                </label>\r\n            </div>\r\n        </div>\r\n    ")}`;
     document.getElementById('proxyList').insertAdjacentHTML('beforeend', proxyHtml);
 }
 
@@ -1556,7 +1560,7 @@ function removeProxy(index) {
         const item = document.querySelector(`.proxy-item[data-index="${index}"]`);
         if (item) item.remove();
     } else {
-        alert('至少保留一个代理配置');
+        alert(tt("至少保留一个代理配置", "Keep at least one proxy configuration"));
     }
 }
 
@@ -1585,8 +1589,8 @@ function generateConfig() {
     const serverPort = document.getElementById('serverPort').value || '7000';
     const token = document.getElementById('token').value;
     
-    let config = '# FRP 客户端配置文件\n';
-    config += '# 生成时间: ' + new Date().toLocaleString('zh-CN') + '\n\n';
+    let config = tt("# FRP 客户端配置文件\n", "# FRP client configuration\n");
+    config += tt("# 生成时间: ", "# Generated at: ") + new Date().toLocaleString('zh-CN') + '\n\n';
     
     config += '[common]\n';
     config += `serverAddr = "${serverAddr}"\n`;
@@ -1632,22 +1636,22 @@ function generateConfig() {
     });
     
     document.getElementById('generatedConfig').value = config;
-    showMessage('配置生成成功', 'success');
+    showMessage(tt('配置生成成功', 'Config generated successfully'), 'success');
 }
 
 function copyConfig() {
     const configText = document.getElementById('generatedConfig');
     if (!configText.value) {
-        showMessage('请先生成配置', 'warning');
+        showMessage(tt('请先生成配置', 'Generate config first'), 'warning');
         return;
     }
     
     navigator.clipboard.writeText(configText.value).then(() => {
-        showMessage('配置已复制到剪贴板', 'success');
+        showMessage(tt('配置已复制到剪贴板', 'Config copied to clipboard'), 'success');
     }).catch(() => {
         configText.select();
         document.execCommand('copy');
-        showMessage('配置已复制到剪贴板', 'success');
+        showMessage(tt('配置已复制到剪贴板', 'Config copied to clipboard'), 'success');
     });
 }
 
@@ -1701,15 +1705,16 @@ function showMessage(message, type = 'info') {
 const I18N = {
     zh: {
         'nav.dashboard': '运行状态', 'nav.settings': '配置与下载', 'nav.logs': '运行日志',
+        'nav.watchdog': '进程自愈守护', 'nav.system': '系统设置', 'nav.daemon': '守护与告警', 'nav.securitypage': '安全中心',
         'nav.status': '运行状态', 'nav.portmap': '端口映射', 'nav.serverinfo': '服务端连接信息',
         'nav.traffic': '流量监控', 'nav.config': '配置编辑器', 'nav.generator': '配置生成器',
-        'nav.bins': 'FRP 下载 / 更新', 'nav.web': 'Web 设置', 'nav.security': '配置安全扫描',
+        'nav.bins': 'frp 版本控制', 'nav.web': 'Web 设置', 'nav.security': '配置安全扫描',
         'nav.audit': '操作审计', 'nav.proxies': '代理编辑器', 'nav.templates': '配置模板库',
         'sec.status': '运行状态', 'sec.portmap': '端口映射', 'sec.serverinfo': '服务端连接信息',
         'sec.traffic': '流量监控', 'sec.config': '配置编辑器', 'sec.generator': '配置生成器',
-        'sec.bins': 'FRP 下载 / 更新', 'sec.web': 'Web 设置', 'sec.security': '配置安全扫描',
+        'sec.bins': 'frp 版本控制', 'sec.web': 'Web 设置', 'sec.security': '配置安全扫描',
         'sec.audit': '操作审计', 'sec.proxies': '代理编辑器', 'sec.templates': '配置模板库',
-        'sec.logs': '运行日志',
+        'sec.logs': '运行日志', 'sec.watchdog': '进程自愈守护', 'sec.daemon': '守护与告警', 'sub.watchdog': '进程自愈',
         'btn.start': '启动', 'btn.stop': '停止', 'btn.restart': '重启', 'btn.stopall': '全部停止',
         'btn.save': '保存', 'btn.load': '加载', 'btn.refresh': '刷新', 'btn.test': '测试',
         'btn.apply': '套用模板', 'btn.add': '新增代理', 'btn.edit': '编辑', 'btn.delete': '删除',
@@ -1759,7 +1764,7 @@ const I18N = {
         'sec.traffic': 'Traffic Monitor', 'sec.config': 'Config Editor', 'sec.generator': 'Config Generator',
         'sec.bins': 'FRP Download', 'sec.web': 'Web Settings', 'sec.security': 'Security Scan',
         'sec.audit': 'Audit Log', 'sec.proxies': 'Proxy Editor', 'sec.templates': 'Templates',
-        'sec.logs': 'Logs',
+        'sec.logs': 'Logs', 'sec.watchdog': 'Self-healing Watchdog', 'sec.daemon': 'Guard & Alerts', 'sub.watchdog': 'Self-healing',
         'btn.start': 'Start', 'btn.stop': 'Stop', 'btn.restart': 'Restart', 'btn.stopall': 'Stop All',
         'btn.save': 'Save', 'btn.load': 'Load', 'btn.refresh': 'Refresh', 'btn.test': 'Test',
         'btn.apply': 'Apply', 'btn.add': 'Add Proxy', 'btn.edit': 'Edit', 'btn.delete': 'Delete',
@@ -1806,6 +1811,432 @@ function t(key) {
     return key;
 }
 
+// 行内双语助手：根据当前语言返回对应文案，便于 JS 动态注入的字符串即时翻译
+function tt(zh, en) {
+    return CURRENT_LANG === 'en' ? (en == null ? zh : en) : zh;
+}
+
+// ===================== 静态文案运行时翻译 =====================
+// 固定 HTML 文本（没有 data-i18n 的）在切换语言时由映射表统一替换；
+// JS 动态生成的文案已用 tt() 包裹，二者互补。
+var ZH_EN_STATIC = {
+    "FRP Manager - 跨平台版": "FRP Manager - Cross-platform",
+    "跨平台版 v{{ app_version }} · Flask": "Cross-platform v{{ app_version }} · Flask",
+    "控制中心": "Control Center",
+    "客户端 (frpc)": "Client (frpc)",
+    "服务端 (frps)": "Server (frps)",
+    "客户端与服务端可同时运行、互不影响；先选上方目标，再执行操作。": "Client and server can run at the same time independently. Pick a target above, then run an action.",
+    "系统: {{ system_info }}": "System: {{ system_info }}",
+    "目标: {{ arch_info }}": "Target: {{ arch_info }}",
+    "实时": "Live",
+    "已登录": "Signed in",
+    "主题": "Theme",
+    "退出登录": "Sign out",
+    "客户端 frpc": "Client frpc",
+    "服务端 frps": "Server frps",
+    "Web UI 运行中": "Web UI running",
+    "检查中...": "Checking...",
+    "开启后，若 frpc / frps 在「期望运行」状态下意外退出，守护线程会自动拉起；\r\r\n                    连续崩溃超过上限则停止自启并告警，防止雪崩。开关与阈值在「系统设置 → 守护与告警」中调整。": "Once enabled, if frpc / frps exits unexpectedly while expected to be running, the watchdog restarts it automatically; after too many consecutive crashes it stops auto-starting and raises an alert to avoid a crash loop. The toggle and threshold live in \"System -> Watchdog & Alerts\".",
+    "frpc 客户端": "frpc client",
+    "frps 服务端": "frps server",
+    "客户端代理": "Client proxies",
+    "服务端端口": "Server ports",
+    "客户端 (frpc) 代理端口": "Client (frpc) proxy ports",
+    "加载中...": "Loading...",
+    "服务端 (frps) 端口": "Server (frps) ports",
+    "刷新连接信息": "Refresh connection info",
+    "当服务端(frps)已启动且启用管理 API 时，此处实时展示连接信息；未启用则下方显示配置指引。": "When frps is running with the management API enabled, live connection info is shown here; otherwise a configuration guide is displayed below.",
+    "连接信息": "Connection info",
+    "服务端配置文件": "Server config file",
+    "面板地址": "Dashboard address",
+    "打开": "Open",
+    "重置": "Reset",
+    "后端探测": "Backend probe",
+    "监听地址": "Listen address",
+    "鉴权方式": "Auth method",
+    "连接状态": "Connection status",
+    "未检测": "Not tested",
+    "「面板地址」给": "\"Dashboard address\" is what ",
+    "浏览器 / 外部程序": "browsers / external programs",
+    "用（默认取你访问本页面的 IP，可改并记住）；\r\r\n                        「后端探测」是本程序代发请求用的地址（frps 的面板不带 CORS 头，浏览器无法直连）。两者不同属正常。": " use (defaults to the IP you are visiting this page with; editable and remembered). \"Backend probe\" is the address this program sends requests from (the frps dashboard sends no CORS headers, so browsers cannot call it directly). It is normal for the two to differ.",
+    "Basic Auth 鉴权凭证": "Basic Auth credentials",
+    "改完需重启 frps": "Restart frps after changing",
+    "用户名": "Username",
+    "密码": "Password",
+    "显示": "Show",
+    "保存并写入配置": "Save and write to config",
+    "复制 curl": "Copy curl",
+    "保存会直接改写": "Saving rewrites ",
+    "（ini 写": "(for ini it writes ",
+    "，\r\r\n                        toml 写": ", for toml it writes ",
+    "），并自动备份一份；\r\r\n                        改完必须": "), and backs up a copy; you must ",
+    "重启 frps": "restart frps",
+    "才会生效。": " for it to take effect.",
+    "接口与连通性检测": "API & connectivity checks",
+    "复制": "Copy",
+    "检测 API 连接": "Test API connection",
+    "覆盖地址": "Override address",
+    "端口": "Port",
+    "一键修复配置": "Fix config",
+    "管理 API 要怎么配置才生效？（ini 与 toml 的写法区别）": "How should the management API be configured to work? (ini vs toml differences)",
+    "推荐（TOML，文件名以 .toml 结尾）": "Recommended (TOML, file name ends with .toml)",
+    "bindPort = 7000\r\r\nauth.token = \"改成更复杂的\"\r\r\n\r\r\nwebServer.addr = \"0.0.0.0\"\r\r\nwebServer.port = 7500\r\r\nwebServer.user = \"admin\"\r\r\nwebServer.password = \"改成更复杂的\"": "bindPort = 7000\nauth.token = \"change-me-to-something-stronger\"\n\nwebServer.addr = \"0.0.0.0\"\nwebServer.port = 7500\nwebServer.user = \"admin\"\nwebServer.password = \"change-me-to-something-stronger\"",
+    "或者（INI，文件名以 .ini 结尾）——必须写旧字段名": "Or (INI, file name ends with .ini) - you must use the old field names",
+    "[common]\r\r\nbind_port = 7000\r\r\ntoken = 改成更复杂的\r\r\n\r\r\ndashboard_addr = 0.0.0.0\r\r\ndashboard_port = 7500\r\r\ndashboard_user = admin\r\r\ndashboard_pwd = 改成更复杂的": "[common]\nbind_port = 7000\ntoken = change-me-to-something-stronger\n\ndashboard_addr = 0.0.0.0\ndashboard_port = 7500\ndashboard_user = admin\ndashboard_pwd = change-me-to-something-stronger",
+    "坑": "Pitfall",
+    "：ini 格式里写": ": writing ",
+    "段，frp 会": " in an ini file makes frp ",
+    "直接忽略": "ignore it completely",
+    "，\r\r\n                        frps 能起来但 7500 不会监听 —— 就是「连接被拒绝」的典型原因。点上方黄色「一键修复配置」可自动转换。": ", so frps starts but never listens on 7500 - the classic \"connection refused\" cause. Click the yellow \"Fix config\" button above to convert it automatically.",
+    "实时连接": "Live connections",
+    "frps 运行中 · 管理API已启用": "frps running · management API enabled",
+    "代理总数": "Total proxies",
+    "代理名": "Proxy",
+    "状态": "Status",
+    "客户端版本": "Client version",
+    "请启动 frps 并启用管理 API": "Start frps with the management API enabled",
+    "内存 · frpc": "Memory · frpc",
+    "内存 · frps": "Memory · frps",
+    "下载 / 更新 FRP": "Download / update FRP",
+    "检查更新": "Check for updates",
+    "下载镜像（国内代理）:": "Download mirror (China proxy):",
+    "自动（官方 + 国内镜像回退）": "Auto (official, falling back to China mirrors)",
+    "ghfast.top 国内代理": "ghfast.top China proxy",
+    "gh-proxy.com 国内代理": "gh-proxy.com China proxy",
+    "ghproxy.net 国内代理": "ghproxy.net China proxy",
+    "mirror.ghproxy.com 国内代理": "mirror.ghproxy.com China proxy",
+    "仅官方 GitHub（不使用代理）": "Official GitHub only (no proxy)",
+    "准备中": "Preparing",
+    "frpc（客户端）": "frpc (client)",
+    "frps（服务端）": "frps (server)",
+    "当前平台": "Current platform",
+    "· 二进制目录": "· binary directory",
+    "· 版本归档": "· archived versions",
+    "版本切换": "Version switch",
+    "frpc（客户端）可用版本:": "frpc (client) available versions:",
+    "扫描中…": "Scanning...",
+    "frps（服务端）可用版本:": "frps (server) available versions:",
+    "切换到所选版本": "Switch to selected version",
+    "重新扫描本地版本": "Rescan local versions",
+    "选择要切换的版本后点「切换到所选版本」。 frpc / frps 可分别指定不同版本。": "Pick a version, then click \"Switch to selected version\". frpc and frps can use different versions.",
+    "版本来源：": "Version sources: ",
+    "当前生效文件、": "currently active files, ",
+    "归档、\r\r\n                    以及": "archives, and ",
+    "temp/frp_&lt;版本&gt;_&lt;平台&gt;/": "temp/frp_&lt;version&gt;_&lt;platform&gt;/",
+    "里解压出来的官方包。": " unpacked from official packages.",
+    "切换时会自动把原版本归档进": "When switching, the previous version is archived into ",
+    "，随时可以切回去。": ", so you can switch back anytime.",
+    "正在运行的 frpc/frps 会占用文件，请先停止再切换。": "A running frpc/frps locks these files; stop it before switching.",
+    "手动补充版本：把二进制按": "Add versions manually: name the binaries ",
+    "frpc_&lt;平台&gt;_&lt;版本&gt;": "frpc_&lt;platform&gt;_&lt;version&gt; /",
+    "frps_&lt;平台&gt;_&lt;版本&gt;": "frps_&lt;platform&gt;_&lt;version&gt;",
+    "命名放进": " and put them in ",
+    "，\r\r\n                    点「重新扫描本地版本」即可出现在下拉里。": ", then click \"Rescan local versions\" to see them in the list.",
+    "离线导入": "Offline import",
+    "支持 .zip / .tar.gz": "Supports .zip / .tar.gz",
+    "内网 / 无外网环境：先从能上网的机器下载官方 frp 发布包（含 frpc / frps 二进制），传到本机后在此上传，自动解压并安装到 bin/。": "For intranet / offline machines: download the official frp release (including the frpc / frps binaries) on a machine with internet access, copy it over and upload it here; it is unpacked and installed into bin/ automatically.",
+    "选择发布包:": "Select release package:",
+    "上传并安装": "Upload and install",
+    "Web端口:": "Web port:",
+    "保存端口": "Save port",
+    "修改端口后需重启应用生效": "Restart the app for the new port to take effect",
+    "开机启动": "Startup",
+    "在各环境下把本程序注册为开机自启（Windows 注册表 / Linux systemd / macOS launchd）。\r\r\n                    勾选后本次立即生效，下次开机自动拉起面板；下方两项则在本程序每次启动时自动拉起对应的 frp。\r\r\n                    注意：请先完成 frpc / frps 的配置，再勾选「随程序启动」——未配置时即使勾选也会自动跳过，避免启动报错。": "Register this program to start automatically on each platform (Windows registry / Linux systemd / macOS launchd). When checked it takes effect immediately and the panel comes up with the system; the two options below start the corresponding frp every time this program starts. Note: configure frpc / frps first, then enable \"start with program\" - unconfigured ones are skipped automatically to avoid startup errors.",
+    "开机自动启动本程序": "Start this program on boot",
+    "随程序启动 FRPC 客户端": "Start FRPC client with the program",
+    "随程序启动 FRPS 服务端": "Start FRPS server with the program",
+    "等网络就绪后再拉起": "Wait until the network is ready",
+    "系统级需管理员权限": "System level requires administrator rights",
+    "保存开机启动设置": "Save startup settings",
+    "重新读取": "Reload",
+    "登录认证": "Login authentication",
+    "账号密码与图形验证码开关统一保存在上面的配置文件里，改完立即生效（改密码会让当前会话立刻失效）。\r\r\n                    忘记了可以直接编辑该文件：": "Credentials and the captcha toggle are stored in the config file above and take effect immediately (changing the password invalidates the current session).\n If you forget them, edit that file directly:",
+    "启用登录保护:": "Enable login protection:",
+    "访问面板前必须登录": "Require sign-in before opening the panel",
+    "图形验证码开关:": "Image captcha:",
+    "登录时额外输入 4 位图形验证码": "Require a 4-character captcha at sign-in",
+    "登录账号:": "Username:",
+    "新密码（留空=不修改）:": "New password (blank = unchanged):",
+    "会话有效期（分钟，0=跟随浏览器）:": "Session lifetime (minutes, 0 = follow browser):",
+    "记住此设备（天）:": "Remember this device (days):",
+    "保存认证设置": "Save auth settings",
+    "退出重新登录": "Sign out and sign in again",
+    "进程自愈守护与掉线告警推送的开关统一在此设置；「运行状态 → 进程自愈守护」可查看实时情况。": "The watchdog and disconnect-alert toggles are set here; see \"Status -> Self-healing watchdog\" for live details.",
+    "开启后，若 frpc / frps 在「期望运行」状态下意外退出，守护线程每 5 秒检测并自动拉起；连续崩溃超过上限则停止自启并告警，防止雪崩。": "Once enabled, if frpc / frps exits unexpectedly while expected to be running, the watchdog checks every 5 seconds and restarts it; after too many consecutive crashes it stops auto-starting and raises an alert to avoid a crash loop.",
+    "启用进程自愈守护": "Enable self-healing watchdog",
+    "连崩上限（超过则停止自启）:": "Crash limit (auto-start stops beyond this):",
+    "保存自愈设置": "Save watchdog settings",
+    "定时重启": "Scheduled restart",
+    "按固定间隔（小时）或每天指定时刻自动重启勾选的 frpc / frps，适合需要定期刷新连接、回收资源的场景；仅重启「正在运行或已登记自愈」的进程，不会擅自拉起未运行的 frp。": "Automatically restart the selected frpc / frps on a fixed interval (hours) or at a fixed daily time - useful for refreshing connections and reclaiming resources periodically. Only processes that are running or registered for self-healing are restarted; stopped frp processes are never started by this feature.",
+    "启用定时重启": "Enable scheduled restart",
+    "触发方式:": "Trigger:",
+    "按间隔（每 N 小时）": "Interval (every N hours)",
+    "每天固定时刻": "Daily at a fixed time",
+    "重启间隔（小时，1–720）:": "Restart interval (hours, 1-720):",
+    "每天重启时刻（触发方式选「每天」时生效）:": "Daily restart time (used when the trigger is \"Daily\"):",
+    "重启 FRPC 客户端": "Restart FRPC client",
+    "重启 FRPS 服务端": "Restart FRPS server",
+    "保存定时重启设置": "Save scheduled restart settings",
+    "掉线告警推送": "Disconnect alerts",
+    "frpc / frps 掉线、自愈失败或启动失败时，通过 Webhook（钉钉 / 飞书 / 企业微信）或邮件通知你。": "Get notified via webhook (DingTalk / Feishu / WeCom) or email when frpc / frps goes offline, self-healing fails or a start fails.",
+    "启用掉线告警": "Enable disconnect alerts",
+    "告警方式:": "Alert channel:",
+    "钉钉 (DingTalk)": "DingTalk",
+    "飞书 (Feishu)": "Feishu",
+    "企业微信 (WeCom)": "WeCom",
+    "邮件 (SMTP)": "Email (SMTP)",
+    "Webhook 地址（钉钉/飞书/企业微信机器人）:": "Webhook URL (DingTalk / Feishu / WeCom bot):",
+    "FRP 掉线时通知": "Notify when FRP goes offline",
+    "自愈失败时通知": "Notify when self-healing fails",
+    "启动失败时通知": "Notify when a start fails",
+    "邮件告警设置（方式选「邮件」时生效）": "Email alert settings (used when the channel is Email)",
+    "SMTP 服务器:": "SMTP server:",
+    "SMTP 端口:": "SMTP port:",
+    "发件账号:": "Sender account:",
+    "发件密码/授权码:": "Sender password / app code:",
+    "收件人:": "Recipient:",
+    "保存告警设置": "Save alert settings",
+    "发送测试告警": "Send test alert",
+    "配置类型:": "Config type:",
+    "加载配置": "Load config",
+    "保存配置": "Save config",
+    "frps 的实时连接信息已统一放在顶部「服务端连接信息」区块，此处不再重复显示。": "Live frps connection info now lives in the \"Server connection info\" section at the top and is not repeated here.",
+    "服务端地址:": "Server address:",
+    "服务端端口:": "Server port:",
+    "认证Token:": "Auth token:",
+    "代理配置": "Proxy configuration",
+    "代理 #1": "Proxy #1",
+    "代理名称:": "Proxy name:",
+    "代理类型:": "Proxy type:",
+    "本地IP:": "Local IP:",
+    "本地端口:": "Local port:",
+    "远程端口:": "Remote port:",
+    "自定义域名:": "Custom domain:",
+    "启用TLS": "Enable TLS",
+    "STCP加密": "Encrypt STCP",
+    "+ 添加代理": "+ Add proxy",
+    "生成配置": "Generate config",
+    "复制配置": "Copy config",
+    "生成的配置:": "Generated config:",
+    "共": "Total ",
+    "条代理": " proxies",
+    "server（被访问端）": "server (accessed side)",
+    "visitor（访问端）": "visitor (accessing side)",
+    "立即扫描": "Scan now",
+    "检查 frps / frpc 配置中的安全风险：管理面板是否暴露公网、是否设置鉴权 token、server_addr 是否误填 0.0.0.0 等。": "Checks the frps / frpc config for security risks: is the dashboard exposed to the internet, is an auth token set, is server_addr wrongly set to 0.0.0.0, and so on.",
+    "点击「立即扫描」开始": "Click \"Scan now\" to start",
+    "全部": "All",
+    "面板 HTTP 链接": "Panel HTTP link",
+    "显示200行": "Show 200 lines",
+    "显示500行": "Show 500 lines",
+    "显示1000行": "Show 1000 lines",
+    "显示全部": "Show all",
+    "自动滚动": "Auto scroll",
+    "清空日志": "Clear logs",
+    "选择日志文件": "Select log file",
+    "每行前缀": "Line prefix",
+    "[面板]": "[Panel]",
+    "标明来源；选「全部」时按时间戳归并成一条时间线。": " marks the source; with \"All\" selected, entries are merged into a single timeline by timestamp.",
+    "是本程序自己的记录（启停操作、HTTP 链接可达性检测），与 frp 进程的输出区分开。\r\r\n                    日志目录": " marks this program's own records (start/stop actions, HTTP link reachability checks), separating them from frp process output.\n                    Log directory",
+    "· 当前文件": "· current file",
+    "frps 服务端（蓝）": "frps server (blue)",
+    "frpc 客户端（黄）": "frpc client (yellow)",
+    "面板 HTTP 链接（紫）": "Panel HTTP link (purple)",
+    "未识别来源（灰）": "Unknown source (gray)",
+    "全部结果": "All results",
+    "仅成功": "Success only",
+    "仅失败": "Failures only",
+    "最近 200 条": "Last 200",
+    "最近 500 条": "Last 500",
+    "最近 1000 条": "Last 1000",
+    "最近 2000 条": "Last 2000",
+    "导出": "Export",
+    "记录所有关键操作（启动 / 停止 / 重启 / 配置保存 / 离线导入 / 设置变更）及来源 IP，保存在": "Records every key operation (start / stop / restart / config save / offline import / settings change) with the source IP, stored in ",
+    "。\r\r\n                    本页独立成页、按需加载，不再拖慢其它页面。": ". This page loads on demand and no longer slows down other pages.",
+    "当前显示条数": "Shown",
+    "其中失败": "Failures",
+    "最近一条时间": "Latest entry",
+    "· 基于": " · Built with ",
+    "构建 · 跨平台 FRP 管理控制台": " · Cross-platform FRP management console",
+    "作者": "Author",
+    "代号847": "Code847",
+    "GitHub 项目": "GitHub project",
+    "问题反馈": "Report an issue",
+    "选择操作目标": "Select target",
+    "菜单": "Menu",
+    "Web UI 实时运行中": "Web UI running",
+    "切换深浅色主题": "Toggle light/dark theme",
+    "切换语言 / Switch language": "Switch language",
+    "http://IP:端口": "http://IP:port",
+    "如 admin": "e.g. admin",
+    "留空 = 不修改": "blank = unchanged",
+    "显示/隐藏": "Show/Hide",
+    "留空=用配置值": "blank = use the value from config",
+    "改成更复杂的": "change-me-to-something-stronger",
+    "frpc 可用版本": "Available frpc versions",
+    "frps 可用版本": "Available frps versions",
+    "留空则不修改": "leave blank to keep unchanged",
+    "配置类型": "Config type",
+    "配置内容将显示在这里...": "Config content will appear here...",
+    "快照配置类型": "Snapshot config type",
+    "如: 114.132.239.35": "e.g. 114.132.239.35",
+    "如: 7000": "e.g. 7000",
+    "与服务端token保持一致": "must match the server token",
+    "如: web": "e.g. web",
+    "如: 127.0.0.1": "e.g. 127.0.0.1",
+    "如: 18789": "e.g. 18789",
+    "如: web.example.com": "e.g. web.example.com",
+    "生成的配置将显示在这里...": "Generated config will appear here...",
+    "如 ssh / web": "e.g. ssh / web",
+    "仅 http/https": "http/https only",
+    "逗号分隔": "comma separated",
+    "http 路径": "http path",
+    "如 static_file": "e.g. static_file",
+    "点击「生成 Token」": "Click \"Generate token\"",
+    "如: secret_ssh": "e.g. secret_ssh",
+    "两端必须一致": "must match on both sides",
+    "visitor 需填 server 端名称": "the visitor must use the server name",
+    "如: 6000": "e.g. 6000",
+    "关键字过滤：start / config / 失败 / IP": "Keyword filter: start / config / fail / IP",
+    "按执行结果筛选": "Filter by result",
+    "显示条数": "Entries",
+    "FRP Manager · 登录": "FRP Manager · Sign in",
+    "跨平台 FRP 管理控制台": "Cross-platform FRP management console",
+    "本地会话 · 已签名": "Local session · signed",
+    "内网穿透": "Reverse proxy",
+    "统一控制台": "Unified console",
+    "在一台机器上同时管理 frpc 客户端与 frps 服务端：运行状态、端口映射、服务端 dashboard 指标、二进制版本更新，全部集中在一处。": "Manage frpc clients and frps servers on one machine: runtime status, port mappings, server dashboard metrics and binary version updates - all in one place.",
+    "运行状态实时刷新，frpc / frps 双进程独立启停": "Live status refresh, with independent start/stop for frpc and frps",
+    "端口映射与服务端 API 自动识别、一键探测连通性": "Automatic port-mapping and server API detection with one-click connectivity tests",
+    "frpc / frps 版本检测与在线下载替换": "Version detection and online download/upgrade for frpc and frps",
+    "账号密码写进配置文件，图形验证码可随时开关": "Credentials stored in the config file, captcha toggleable at any time",
+    "今日已过": "elapsed today",
+    "未通过认证时，所有页面与接口都会被拒绝访问": "Without authentication, all pages and APIs are refused",
+    "控制台登录": "Console sign-in",
+    "请输入账号与密码": "Enter your username and password",
+    "以及右侧验证码": " plus the code on the right",
+    "账号": "Username",
+    "验证码": "Captcha",
+    "加载中": "Loading",
+    "记住此设备": "Remember this device",
+    "天": " days",
+    "忘记密码？": "Forgot password?",
+    "登 录": "Sign in",
+    "验证中": "Verifying",
+    "提示": "Tip",
+    "本地凭证": "Local credentials",
+    "验证码开关": "Captcha",
+    "免登录模式": "No-login mode",
+    "当前仍使用出厂默认口令，登录后请在「配置与下载 → Web 设置」里尽快修改": "The factory default password is still in use - change it soon under \"Config & Download -> Web settings\"",
+    "会话使用服务端签名 Cookie 保存，勾选「记住此设备」可保留多天": "Sessions use server-signed cookies; enable \"Remember this device\" to stay signed in for days",
+    "登录成功": "Signed in",
+    "正在进入控制台...": "Entering the console...",
+    "© FRP Manager · 基于 Flask 构建": "© FRP Manager · Built with Flask",
+    "忘记密码": "Forgot password",
+    "会话说明": "About sessions",
+    "本地访问": "Local access",
+    "请输入账号": "Enter your username",
+    "请输入密码": "Enter your password",
+    "显示密码": "Show password",
+    "4 位字符": "4 characters",
+    "点击换一张": "Click to refresh",
+    "账号密码保存在服务端本地配置文件中，改完立刻生效": "Credentials are stored in the server-side config file; changes take effect immediately",
+    "captcha = true / false 即可开关图形验证码": "Set captcha = true / false to toggle the image captcha",
+    "enabled = false 可直接关闭整套登录保护\r\n": "Set enabled = false to turn off login protection entirely",
+    "frpc_<平台>_<版本>": "frpc_<platform>_<version>",
+    "frps_<平台>_<版本>": "frps_<platform>_<version>",
+    "temp/frp_<版本>_<平台>/": "temp/frp_<version>_<platform>/",
+    "点击切换为深色主题": "Switch to dark theme",
+    "点击切换为浅色主题": "Switch to light theme",
+    "浅色": "Light",
+    "深色": "Dark",
+    "未运行": "Idle",
+    "运行中": "Running",
+    "已停止": "Stopped",
+    "检测异常": "Check failed",
+    "通过 Web UI 启动": "Started from the Web UI",
+    "NAS 管理界面（5000/5001）穿透": "NAS admin UI (5000/5001) tunneling",
+    "SSH 远程": "SSH remote",
+    "Web 站点（http）": "Web site (http)",
+    "Web 站点（https）": "Web site (https)",
+    "远程桌面 RDP": "Remote Desktop RDP",
+    "游戏联机（UDP）": "Game multiplayer (UDP)",
+    "群晖 / 威联通": "Synology / QNAP",
+    "本机 IP": "Local IP",
+    "把本机 22 端口映射出去，远程用 ssh 连接": "Map local port 22 for remote ssh access",
+    "把本机 Web 服务通过子域名暴露到公网": "Expose a local web service publicly via a subdomain",
+    "复用已有证书暴露 https 站点": "Expose an https site reusing an existing certificate",
+    "Windows 远程桌面 3389": "Windows Remote Desktop 3389",
+    "把本机 UDP 端口映射出去用于联机": "Map a local UDP port for multiplayer",
+    "被穿透服务所在的本机地址，同机填 127.0.0.1": "Local address of the service; use 127.0.0.1 on the same machine",
+    "本机服务监听端口，如 80 / 5000 / 3389": "Local listening port, e.g. 80 / 5000 / 3389",
+    "服务端对外开放的端口，需已在防火墙放行": "Port exposed by the server; must be allowed by the firewall",
+    "仅 http/https 需要，服务端须已配置 subdomain_host": "Only needed for http/https; the server needs subdomain_host configured",
+};
+
+// 由 I18N 字典反推 zh 值 -> en 值，作为兜底
+var ZH_EN_DICT = (function () {
+    var m = {};
+    var zh = I18N.zh || {};
+    var en = I18N.en || {};
+    for (var k in zh) {
+        if (Object.prototype.hasOwnProperty.call(en, k) && zh[k] && en[k] && zh[k] !== en[k]) m[zh[k]] = en[k];
+    }
+    return m;
+})();
+
+var ZH_EN_NORM = (function () {
+    // 规范化索引：抹掉所有空白后再匹配 —— HTML 的换行与缩进会让同一句话
+    // 在源码里和映射表里长得不一样，去掉空白即可对齐。
+    var m = {};
+    var add = function (src) {
+        for (var k in src) {
+            if (!Object.prototype.hasOwnProperty.call(src, k)) continue;
+            var nk = k.replace(/\s+/g, '');
+            if (nk && !Object.prototype.hasOwnProperty.call(m, nk)) m[nk] = src[k];
+        }
+    };
+    add(ZH_EN_STATIC); add(ZH_EN_DICT);
+    return m;
+})();
+
+function zhEnOne(core) {
+    if (Object.prototype.hasOwnProperty.call(ZH_EN_STATIC, core)) return ZH_EN_STATIC[core];
+    if (Object.prototype.hasOwnProperty.call(ZH_EN_DICT, core)) return ZH_EN_DICT[core];
+    var nk = core.replace(/\s+/g, '');
+    if (nk && Object.prototype.hasOwnProperty.call(ZH_EN_NORM, nk)) return ZH_EN_NORM[nk];
+    // 含 Jinja 变量或与动态内容拼接的少量文案
+    if (core.indexOf('\u8de8\u5e73\u53f0\u7248 v') === 0) return core.replace('\u8de8\u5e73\u53f0\u7248 v', 'Cross-platform v');
+    if (core.indexOf('\u7cfb\u7edf: ') === 0) return core.replace('\u7cfb\u7edf: ', 'System: ');
+    if (core.indexOf('\u76ee\u6807: ') === 0) return core.replace('\u76ee\u6807: ', 'Target: ');
+    return null;
+}
+
+function zhEnText(v) {
+    if (v == null) return null;
+    var core = v.trim();
+    if (!core) return null;
+    var one = zhEnOne(core);
+    if (one != null) return v.replace(core, one);
+    // HTML 里的换行与缩进会把整段变成"多行"的单个文本节点，整块查表必然失败；
+    // 逐行翻译并原样保留换行缩进，切回中文时可精确还原。
+    if (/[\r\n]/.test(v)) {
+        var any = false;
+        var out = v.split(/(\r?\n)/).map(function (seg) {
+            if (/^\r?\n$/.test(seg)) return seg;
+            var c = seg.trim();
+            if (!c) return seg;
+            var t = zhEnOne(c);
+            if (t == null) return seg;
+            any = true;
+            return seg.replace(c, t);
+        }).join('');
+        return any ? out : null;
+    }
+    return null;
+}
+
+
 // ========== FRP管理UI类 ==========
 class FRPManagerUI {
     constructor() {
@@ -1815,6 +2246,8 @@ class FRPManagerUI {
         this.initElements();
         this.initEventListeners();
         this.initTheme();
+        // 启动即恢复语言偏好（localStorage + 服务器持久化）
+        this.loadI18n();
         // 首屏只加载当前页需要的数据，其余等切页时再拉（显著减少启动请求数）
         this.enterCurrentPage();
     }
@@ -1823,7 +2256,7 @@ class FRPManagerUI {
     _once(key, fn) {
         if (this._lazy[key]) return;
         this._lazy[key] = 1;
-        try { fn(); } catch (e) { console.error('懒加载失败:', key, e); }
+        try { fn(); } catch (e) { console.error(tt("懒加载失败:", "Lazy load failed: "), key, e); }
     }
     // 运行状态：状态 / 端口映射 / 服务端连接信息 / 流量
     enterDashboard() {
@@ -1838,7 +2271,7 @@ class FRPManagerUI {
         this._once('webport', () => this.loadWebPort());
         this._once('auth', () => this.loadAuthConfig());
         this._once('boot', () => this.loadAutoStart());
-        this._once('daemon', () => { this.loadWatchdog(); this.loadAlert(); });
+        this._once('daemon', () => { this.loadWatchdog(); this.loadAutoRestart(); this.loadAlert(); });
     }
     // 配置与下载：配置编辑器 / 快照 / 生成器 / 代理编辑器 / 模板库
     enterSettings() {
@@ -1878,7 +2311,7 @@ class FRPManagerUI {
             if (this.authPwd) this.authPwd.value = '';
             if (this.authFilePath) this.authFilePath.textContent = d.file || '—';
         } catch (e) {
-            console.error('读取认证配置失败:', e);
+            console.error(tt("读取认证配置失败:", "Failed to load auth config: "), e);
         }
     }
 
@@ -1886,7 +2319,7 @@ class FRPManagerUI {
         if (!this.saveAuthBtn) return;
         const pwd = (this.authPwd && this.authPwd.value) || '';
         if (!this.authEnabled.checked) {
-            if (!confirm('关闭登录保护后，任何能访问该端口的人都能直接打开面板。确定关闭吗？')) {
+            if (!confirm(tt("关闭登录保护后，任何能访问该端口的人都能直接打开面板。确定关闭吗？", "With login protection off, anyone who can reach this port can open the panel directly. Turn it off?"))) {
                 return;
             }
         }
@@ -1905,13 +2338,13 @@ class FRPManagerUI {
                 body: JSON.stringify(body)
             });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '已保存' : '保存失败'),
+            this.showMessage(d.message || (d.success ? tt("已保存", "Saved") : tt('保存失败', 'Save failed')),
                              d.success ? 'success' : 'error');
-            if (pwd) { this.showMessage('密码已修改，当前会话将失效，请重新登录', 'success');
+            if (pwd) { this.showMessage(tt('密码已修改，当前会话将失效，请重新登录', 'Password changed; current session expired, please log in again'), 'success');
                        setTimeout(() => { location.href = '/logout'; }, 1200); return; }
             this.loadAuthConfig();
         } catch (e) {
-            this.showMessage('保存认证设置失败', 'error');
+            this.showMessage(tt('保存认证设置失败', 'Failed to save auth settings'), 'error');
         }
     }
 
@@ -1926,8 +2359,8 @@ class FRPManagerUI {
             const ic = btn.querySelector('.tb-theme-ic');
             const tx = btn.querySelector('.tb-theme-txt');
             if (ic) ic.textContent = dark ? '☾' : '☀';
-            if (tx) tx.textContent = dark ? '深色' : '浅色';
-            btn.title = dark ? '点击切换为浅色主题' : '点击切换为深色主题';
+            if (tx) tx.textContent = dark ? tt("深色", "Dark") : tt("浅色", "Light");
+            btn.title = dark ? tt("点击切换为浅色主题", "Switch to light theme") : tt("点击切换为深色主题", "Switch to dark theme");
         };
         sync();
         if (btn) {
@@ -1937,6 +2370,10 @@ class FRPManagerUI {
                 localStorage.setItem('frp-theme', next);
                 sync();
             });
+        }
+        // 语言切换：点击在 中文 / English 之间切换
+        if (this.langToggle) {
+            this.langToggle.addEventListener('click', () => this.toggleLang());
         }
     }
     
@@ -1948,7 +2385,7 @@ class FRPManagerUI {
                 this.webPort.value = data.web_port;
             }
         } catch (error) {
-            console.error('加载端口失败:', error);
+            console.error(tt("加载端口失败:", "Failed to load ports: "), error);
         }
     }
     
@@ -2070,6 +2507,16 @@ class FRPManagerUI {
         this.saveWatchdogBtn = document.getElementById('saveWatchdogBtn');
         this.reloadWatchdogBtn = document.getElementById('reloadWatchdogBtn');
         this.wdSettingNote = document.getElementById('wdSettingNote');
+        // 定时重启设置（v1.13.0）
+        this.autoRestartEnabled = document.getElementById('autoRestartEnabled');
+        this.autoRestartMode = document.getElementById('autoRestartMode');
+        this.autoRestartInterval = document.getElementById('autoRestartInterval');
+        this.autoRestartTime = document.getElementById('autoRestartTime');
+        this.autoRestartFrpc = document.getElementById('autoRestartFrpc');
+        this.autoRestartFrps = document.getElementById('autoRestartFrps');
+        this.saveAutoRestartBtn = document.getElementById('saveAutoRestartBtn');
+        this.reloadAutoRestartBtn = document.getElementById('reloadAutoRestartBtn');
+        this.arSettingNote = document.getElementById('arSettingNote');
         // 掉线告警设置
         this.alertEnabled = document.getElementById('alertEnabled');
         this.alertType = document.getElementById('alertType');
@@ -2319,7 +2766,7 @@ class FRPManagerUI {
                 if (this.apiInfo && this.apiInfo.dash_url) {
                     this.apiDashUrl.value = this.apiInfo.dash_url;
                 }
-                this.showMessage('已恢复为自动识别的地址', 'info');
+                this.showMessage(tt('已恢复为自动识别的地址', 'Restored to auto-detected address'), 'info');
             });
         }
         if (this.apiDashUrl) {
@@ -2335,7 +2782,7 @@ class FRPManagerUI {
             this.apiPwdEye.addEventListener('click', () => {
                 this._apiPwdShown = !this._apiPwdShown;
                 this.apiPwd.type = this._apiPwdShown ? 'text' : 'password';
-                this.apiPwdEye.textContent = this._apiPwdShown ? '隐藏' : '显示';
+                this.apiPwdEye.textContent = this._apiPwdShown ? tt("隐藏", "Hide") : tt("显示", "Show");
             });
         }
         if (this.apiAuthSave) {
@@ -2348,6 +2795,8 @@ class FRPManagerUI {
         // ===== P1 新功能事件 =====
         if (this.saveWatchdogBtn) this.saveWatchdogBtn.addEventListener('click', () => this.saveWatchdog());
         if (this.reloadWatchdogBtn) this.reloadWatchdogBtn.addEventListener('click', () => this.loadWatchdog());
+        if (this.saveAutoRestartBtn) this.saveAutoRestartBtn.addEventListener('click', () => this.saveAutoRestart());
+        if (this.reloadAutoRestartBtn) this.reloadAutoRestartBtn.addEventListener('click', () => this.loadAutoRestart());
         if (this.saveAlertBtn) this.saveAlertBtn.addEventListener('click', () => this.saveAlert());
         if (this.reloadAlertBtn) this.reloadAlertBtn.addEventListener('click', () => this.loadAlert());
         if (this.testAlertBtn) this.testAlertBtn.addEventListener('click', () => this.testAlert());
@@ -2387,13 +2836,14 @@ class FRPManagerUI {
     }
     
     async pollStatus() {
+        // 立即拉取并绘制（无论是否已有后台循环在跑，都先画一次）
         try {
             const response = await fetch('/api/status');
             const status = await response.json();
-            
+            this._lastStatus = status;
             const client = (status && status.client) || {running: false};
             const server = (status && status.server) || {running: false};
-            
+
             this.updateStatusItem('clientStatusText', client, 'client');
             this.updateStatusItem('serverStatusText', server, 'server');
             this.updateDot('clientDot', client);
@@ -2404,15 +2854,153 @@ class FRPManagerUI {
             this.renderPortMap(status);
             this.updateWatchdog(status);
         } catch (error) {
-            console.error('获取状态错误:', error);
-            const err = {running: false, error: true, message: '无法获取状态: ' + error};
+            console.error(tt("获取状态错误:", "Failed to get status: "), error);
+            const err = {running: false, error: true, message: tt('无法获取状态: ', 'Failed to get status: ') + error};
             this.updateStatusItem('clientStatusText', err, 'client');
             this.updateStatusItem('serverStatusText', err, 'server');
             this.updateSidebar(err, err);
         }
-        
-        // 定期轮询状态（页面在后台时把间隔拉长，减少无用请求）
-        setTimeout(() => this.pollStatus(), document.hidden ? 15000 : 3000);
+
+        // 保证全局只有一个自循环（切换语言重绘时反复调用也不会开多个定时器）
+        if (!this._pollLoop) {
+            this._pollLoop = true;
+            const loop = () => {
+                if (!this._pollLoop) return;
+                this.pollStatus().then(() => {
+                    setTimeout(loop, document.hidden ? 15000 : 3000);
+                });
+            };
+            loop();
+        }
+    }
+
+    // 切换语言后立即重绘当前页所有动态内容（静态 [data-i18n] 由 applyLang 处理）
+    // 静态文案运行时翻译：把没有 data-i18n 的固定文本按映射表切换中/英
+    /* ---------- 源码固定中文文案的运行时翻译 ----------
+       1) data-i18n 走字典；这里负责源码里没写 data-i18n 的固定文案；
+       2) 记录「中文/英文」双向映射，切回中文时能精确还原；
+       3) 用 MutationObserver 兜住「渲染晚于翻译」的动态内容（状态轮询、列表刷新）。 */
+    applyDomLang() {
+        const en = CURRENT_LANG === 'en';
+        if (!this._langNodes) {
+            this._langNodes = []; this._langAttrs = [];
+            this._nSeen = new WeakSet(); this._aSeen = new WeakMap();
+            this._docTitle = document.title;
+        }
+        // 1) 回放上一轮的记录：切到目标语言（切回中文就靠这一步）
+        this._langNodes = this._langNodes.filter(r => {
+            if (!r.node || !r.node.isConnected) { if (r.node) this._nSeen.delete(r.node); return false; }
+            return true;
+        });
+        for (const r of this._langNodes) {
+            const cur = r.node.nodeValue;
+            if (en && cur === r.zh) r.node.nodeValue = r.en;
+            else if (!en && cur === r.en) r.node.nodeValue = r.zh;
+        }
+        this._langAttrs = this._langAttrs.filter(r => {
+            if (!r.el || !r.el.isConnected) {
+                if (r.el) { const st = this._aSeen.get(r.el); if (st) st.delete(r.attr); }
+                return false;
+            }
+            return true;
+        });
+        for (const r of this._langAttrs) {
+            const cur = r.el.getAttribute(r.attr);
+            if (en && cur === r.zh) r.el.setAttribute(r.attr, r.en);
+            else if (!en && cur === r.en) r.el.setAttribute(r.attr, r.zh);
+        }
+        if (this._docTitle) {
+            if (en) { const t = zhEnText(this._docTitle); if (t) document.title = t; }
+            else { document.title = this._docTitle; }
+        }
+        if (!en) { this._domUnwatch(); return; }   // 中文模式保持源码原样
+        this._trTree(document.body);               // 2) 全文档补一遍
+        this._domWatch();                          // 3) 监听后续动态渲染
+    }
+
+    _pushNode(n, zh, en) {
+        if (this._nSeen.has(n)) return;
+        this._nSeen.add(n);
+        this._langNodes.push({ node: n, zh: zh, en: en });
+    }
+
+    _pushAttr(el, attr, zh, en) {
+        let st = this._aSeen.get(el);
+        if (!st) { st = new Set(); this._aSeen.set(el, st); }
+        if (st.has(attr)) return;
+        st.add(attr);
+        this._langAttrs.push({ el: el, attr: attr, zh: zh, en: en });
+    }
+
+    _trText(n) {
+        const v = n.nodeValue;
+        if (!v || !/[\u4e00-\u9fff]/.test(v)) return;
+        const t = zhEnText(v);
+        if (t == null || t === v) return;
+        this._pushNode(n, v, t);
+        n.nodeValue = t;
+    }
+
+    _trAttr(el, attr) {
+        if (!el || el.nodeType !== 1) return;
+        if (attr === 'value' && !(el.tagName === 'INPUT' && (el.type === 'button' || el.type === 'submit'))) return;
+        if (!el.hasAttribute(attr)) return;
+        const v = el.getAttribute(attr);
+        const t = zhEnText(v);
+        if (t == null || t === v) return;
+        this._pushAttr(el, attr, v, t);
+        el.setAttribute(attr, t);
+    }
+
+    _trTree(root) {
+        if (!root) return;
+        if (root.nodeType === 3) { this._trText(root); return; }
+        if (root.nodeType !== 1) return;
+        const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, null);
+        while (w.nextNode()) {
+            const n = w.currentNode, pe = n.parentElement;
+            if (!pe || /^(SCRIPT|STYLE|TEXTAREA)$/.test(pe.tagName)) continue;
+            // 已由 data-i18n 字典翻译成功的节点不再用静态表覆盖（字典译文更准）
+            const di = pe.closest ? pe.closest('[data-i18n]') : null;
+            if (di && !/[\u4e00-\u9fff]/.test(di.textContent || '')) continue;
+            this._trText(n);
+        }
+        const SEL = '[placeholder],[title],[aria-label],input[type="button"],input[type="submit"]';
+        const list = [];
+        if (root.matches && root.matches(SEL)) list.push(root);
+        if (root.querySelectorAll) root.querySelectorAll(SEL).forEach(e => list.push(e));
+        for (const el of list) for (const a of ['placeholder', 'title', 'aria-label', 'value']) this._trAttr(el, a);
+    }
+
+    _domWatch() {
+        if (this._domWatcher) return;
+        const self = this;
+        this._domWatcher = new MutationObserver(ms => {
+            if (CURRENT_LANG !== 'en') return;
+            for (const m of ms) {
+                if (m.type === 'attributes') { self._trAttr(m.target, m.attributeName); continue; }
+                for (const n of m.addedNodes) self._trTree(n);
+            }
+        });
+        this._domWatcher.observe(document.body, {
+            childList: true, subtree: true,
+            attributes: true, attributeFilter: ['title', 'placeholder', 'aria-label', 'value'],
+        });
+    }
+
+    _domUnwatch() { if (this._domWatcher) { this._domWatcher.disconnect(); this._domWatcher = null; } }
+
+    reapplyLang() {
+        this.applyLang();
+        const name = document.body.getAttribute('data-curpage') || 'dashboard';
+        // 重置懒加载标记，强制各页数据重新渲染（定时器 interval 会再次触发，安全无重复）
+        for (const k in this._lazy) this._lazy[k] = 0;
+        if (name === 'audit') { this.loadAudit(); }
+        else if (name === 'logs') { this.loadLog(); }
+        else if (name === 'system') { this.enterSystem(); }
+        else if (name === 'settings') { this.enterSettings(); }
+        else if (name === 'security') { this.enterSecurity(); }
+        else { this.pollStatus(); this.refreshServerInfo(); this.loadApiInfo(); this.loadTraffic(); }
     }
     
     // 状态文案与配色跟着侧栏同一套规则：运行绿 / 未运行橙 / 停止或异常红
@@ -2421,7 +3009,7 @@ class FRPManagerUI {
         if (!el) return;
         const state = this.modeState(mode || 'client', st);
         el.style.color = {run: '#22c55e', idle: '#f59e0b', stop: '#ef4444', err: '#ef4444'}[state];
-        el.textContent = ({run: '运行中', idle: '未运行', stop: '已停止', err: '检测异常'})[state]
+        el.textContent = ({run: tt('运行中', 'Running'), idle: tt('未运行', 'Idle'), stop: tt('已停止', 'Stopped'), err: tt('检测异常', 'Error')})[state]
                          + (state === 'run' && st && st.pid ? ` (PID: ${st.pid})` : '');
         if (st && st.message) el.title = st.message;
     }
@@ -2439,7 +3027,7 @@ class FRPManagerUI {
 
     updateSidebar(client, server) {
         const data = { client: client || {}, server: server || {} };
-        const label = { run: '运行中', idle: '未运行', stop: '已停止', err: '检测异常' };
+        const label = { run: tt('运行中', 'Running'), idle: tt('未运行', 'Idle'), stop: tt('已停止', 'Stopped'), err: tt('检测异常', 'Error') };
         const dotCls = { run: 'state-run', idle: 'state-idle', stop: 'state-err', err: 'state-err' };
 
         ['client', 'server'].forEach(mode => {
@@ -2452,7 +3040,7 @@ class FRPManagerUI {
             const dot = row.querySelector('.status-dot');
             const txt = row.querySelector('.ss-state');
             if (dot) dot.className = 'status-dot ' + dotCls[state];
-            if (txt) txt.textContent = state === 'run' && st.pid ? `运行中 · ${st.pid}` : label[state];
+            if (txt) txt.textContent = state === 'run' && st.pid ? tt('运行中', 'Running') + ` · ${st.pid}` : label[state];
             row.title = st.message || '';
             // 检测失败时不知道真实状态，保留上一轮的记忆，避免把「已停止」误判成「未运行」
             if (state !== 'err') this._wasRunning[mode] = !!st.running;
@@ -2474,9 +3062,9 @@ class FRPManagerUI {
         if (!el) return;
         if (!ports) { el.textContent = '—'; return; }
         if (ports.connect) {
-            el.textContent = '连接 → ' + ports.connect;
+            el.textContent = tt(tt('连接 → ', 'Connect → '), 'Connect → ') + ports.connect;
         } else if (ports.bind) {
-            el.textContent = '监听 ' + ports.bind + (ports.web ? (' · 管理 ' + ports.web) : '');
+            el.textContent = tt(tt('监听 ', 'Listening '), 'Listening ') + ports.bind + (ports.web ? (tt(' · 管理 ', ' · Admin ') + ports.web) : '');
         } else {
             el.textContent = '—';
         }
@@ -2487,7 +3075,7 @@ class FRPManagerUI {
             const el = document.getElementById(listId);
             if (!el) return;
             if (!arr || !arr.length) {
-                el.innerHTML = '<span class="pm-empty">暂无端口映射（未配置代理或端口）</span>';
+                el.innerHTML = '<span class="pm-empty">' + tt('暂无端口映射（未配置代理或端口）', 'No port mappings (no proxies or ports configured)') + '</span>';
                 return;
             }
             el.innerHTML = arr.map(m => `
@@ -2517,16 +3105,16 @@ class FRPManagerUI {
             const response = await fetch(`/api/config/${configType}`);
             const data = await response.json();
             this.configEditor.value = data.content;
-            this.showMessage('配置加载成功', 'success');
+            this.showMessage(tt('配置加载成功', 'Config loaded successfully'), 'success');
         } catch (error) {
-            this.showMessage('加载配置失败', 'error');
+            this.showMessage(tt('加载配置失败', 'Failed to load config'), 'error');
         }
     }
     
     async saveConfig(configType) {
         const content = this.configEditor.value;
         if (!content.trim()) {
-            this.showMessage('配置内容不能为空', 'warning');
+            this.showMessage(tt('配置内容不能为空', 'Config content cannot be empty'), 'warning');
             return;
         }
         
@@ -2541,15 +3129,15 @@ class FRPManagerUI {
             
             const data = await response.json();
             if (data.success) {
-                this.showMessage('配置保存成功', 'success');
+                this.showMessage(tt('配置保存成功', 'Config saved successfully'), 'success');
                 // [webServer] 可能已改动，刷新顶部的 API 连接信息
                 this.loadApiInfo();
                 this.refreshServerInfo();
             } else {
-                this.showMessage('配置保存失败', 'error');
+                this.showMessage(tt('配置保存失败', 'Failed to save config'), 'error');
             }
         } catch (error) {
-            this.showMessage('保存配置失败', 'error');
+            this.showMessage(tt('保存配置失败', 'Failed to save config'), 'error');
         }
     }
     
@@ -2576,8 +3164,8 @@ class FRPManagerUI {
                 setTimeout(() => this.loadLog(), 500);
             }
         } catch (error) {
-            console.error('启动错误:', error);
-            this.showMessage('启动FRP失败，请检查配置', 'error');
+            console.error(tt("启动错误:", "Start error: "), error);
+            this.showMessage(tt('启动FRP失败，请检查配置', 'Failed to start FRP, please check config'), 'error');
         }
     }
     
@@ -2593,27 +3181,27 @@ class FRPManagerUI {
             
             const data = await response.json();
             if (data.success) {
-                this.showMessage(data.message || 'FRP停止成功', 'success');
+                this.showMessage(data.message || tt("FRP停止成功", "FRP stopped"), 'success');
                 this.refreshServerInfo();
             } else {
-                this.showMessage(data.message || 'FRP停止失败', 'error');
+                this.showMessage(data.message || tt("FRP停止失败", "Failed to stop FRP"), 'error');
             }
         } catch (error) {
-            this.showMessage('停止FRP失败', 'error');
+            this.showMessage(tt('停止FRP失败', 'Failed to stop FRP'), 'error');
         }
     }
     
     async stopAllFRP() {
-        if (!confirm('将停止所有 FRP 进程（客户端与服务端），是否继续？')) {
+        if (!confirm(tt("将停止所有 FRP 进程（客户端与服务端），是否继续？", "This will stop all FRP processes (client and server). Continue?"))) {
             return;
         }
         try {
             const response = await fetch('/api/stop', { method: 'POST' });
             const data = await response.json();
-            this.showMessage(data.message || (data.success ? '已全部停止' : '停止失败'),
+            this.showMessage(data.message || (data.success ? tt("已全部停止", "All stopped") : tt("停止失败", "Stop failed")),
                              data.success ? 'success' : 'error');
         } catch (error) {
-            this.showMessage('停止全部FRP失败', 'error');
+            this.showMessage(tt('停止全部FRP失败', 'Failed to stop all FRP'), 'error');
         }
         this.refreshServerInfo();
     }
@@ -2630,22 +3218,22 @@ class FRPManagerUI {
             
             const data = await response.json();
             if (data.success) {
-                this.showMessage('FRP重启成功', 'success');
+                this.showMessage(tt('FRP重启成功', 'FRP restarted successfully'), 'success');
                 this.refreshServerInfo();
             } else {
-                this.showMessage('FRP重启失败: ' + (data.message || ''), 'error');
+                this.showMessage(tt('FRP重启失败: ', 'FRP restart failed: ') + (data.message || ''), 'error');
             }
         } catch (error) {
-            this.showMessage('重启FRP失败', 'error');
+            this.showMessage(tt('重启FRP失败', 'Failed to restart FRP'), 'error');
         }
     }
     
     async downloadFRP() {
-        if (!confirm('将从 GitHub / 国内镜像下载当前架构（含 ARM64）对应的 frpc/frps，是否继续？\n网络受限时可切换下方国内代理，耗时可能较长。')) {
+        if (!confirm(tt("将从 GitHub / 国内镜像下载当前架构（含 ARM64）对应的 frpc/frps，是否继续？\n网络受限时可切换下方国内代理，耗时可能较长。", "Download frpc/frps for the current architecture (including ARM64) from GitHub or a China mirror. Continue?\nA China proxy is available below if the network is restricted; it may take longer."))) {
             return;
         }
         const mirror = this.dlMirror ? this.dlMirror.value : 'auto';
-        this.showMessage('已开始下载 FRP（后台进行中）...', 'info');
+        this.showMessage(tt('已开始下载 FRP（后台进行中）...', 'Started downloading FRP (running in background)...'), 'info');
         if (this.downloadFrpBtn) this.downloadFrpBtn.disabled = true;
         try {
             const response = await fetch('/api/download-frp', {
@@ -2655,13 +3243,13 @@ class FRPManagerUI {
             });
             const data = await response.json();
             if (!data.success) {
-                this.showMessage(data.message || '下载启动失败', 'error');
+                this.showMessage(data.message || tt("下载启动失败", "Failed to start download"), 'error');
                 if (this.downloadFrpBtn) this.downloadFrpBtn.disabled = false;
                 return;
             }
             this._startDlPoll();
         } catch (error) {
-            this.showMessage('下载 FRP 失败', 'error');
+            this.showMessage(tt('下载 FRP 失败', 'Failed to download FRP'), 'error');
             if (this.downloadFrpBtn) this.downloadFrpBtn.disabled = false;
         }
     }
@@ -2669,8 +3257,8 @@ class FRPManagerUI {
     _startDlPoll() {
         if (this.dlProgressWrap) this.dlProgressWrap.style.display = '';
         const phaseText = {
-            starting: '准备中', resolving: '解析版本', downloading: '下载中',
-            extracting: '解压中', installing: '安装中', done: '完成', failed: '失败'
+            starting: tt("准备中", "Preparing"), resolving: tt("解析版本", "Resolving version"), downloading: tt("下载中", "Downloading"),
+            extracting: tt("解压中", "Extracting"), installing: tt("安装中", "Installing"), done: tt("完成", "Done"), failed: tt("失败", "Failed")
         };
         const tick = async () => {
             try {
@@ -2686,8 +3274,8 @@ class FRPManagerUI {
                 }
                 if (d.finished) {
                     if (this.downloadFrpBtn) this.downloadFrpBtn.disabled = false;
-                    this.showMessage(d.ok ? (d.message || 'FRP 下载完成')
-                                          : (d.message || 'FRP 下载失败'),
+                    this.showMessage(d.ok ? (d.message || tt("FRP 下载完成", "FRP download complete"))
+                                          : (d.message || tt("FRP 下载失败", "FRP download failed")),
                                     d.ok ? 'success' : 'error');
                     if (this.dlProgressWrap) {
                         setTimeout(() => { this.dlProgressWrap.style.display = 'none'; }, 2500);
@@ -2697,7 +3285,7 @@ class FRPManagerUI {
                     return;
                 }
             } catch (e) {
-                this.showMessage('查询下载进度失败', 'error');
+                this.showMessage(tt('查询下载进度失败', 'Failed to query download progress'), 'error');
                 if (this.downloadFrpBtn) this.downloadFrpBtn.disabled = false;
                 if (this.dlProgressWrap) this.dlProgressWrap.style.display = 'none';
                 return;
@@ -2722,7 +3310,7 @@ class FRPManagerUI {
                 this.showMessage(data.message, 'error');
             }
         } catch (error) {
-            this.showMessage('保存端口失败', 'error');
+            this.showMessage(tt('保存端口失败', 'Failed to save port'), 'error');
         }
     }
 
@@ -2741,15 +3329,15 @@ class FRPManagerUI {
             if (this.dlMirror && s.mirror) this.dlMirror.value = s.mirror;
             if (this.autoStatus) {
                 const on = !!d.autostart_active;
-                this.autoStatus.textContent = on ? '当前已注册开机启动' : '当前未注册开机启动';
+                this.autoStatus.textContent = on ? tt("当前已注册开机启动", "Auto-start is registered") : tt("当前未注册开机启动", "Auto-start is not registered");
                 this.autoStatus.style.color = on ? '#22c55e' : '#ef4444';
             }
             if (this.autoHint && d.system && !d.autostart_supported) {
-                this.autoHint.textContent = '当前系统（' + d.system
-                    + '）暂不支持自动注册开机启动，但「随程序启动 FRPC / FRPS」仍可按设置生效。';
+                this.autoHint.textContent = tt('当前系统（', 'Current system (') + d.system
+                    + tt("）暂不支持自动注册开机启动，但「随程序启动 FRPC / FRPS」仍可按设置生效。", ") does not support auto-start registration yet, but \"Start FRPC / FRPS with the program\" still applies.");
             }
         } catch (e) {
-            console.error('读取开机启动设置失败:', e);
+            console.error(tt("读取开机启动设置失败:", "Failed to load autostart settings: "), e);
         }
     }
 
@@ -2768,11 +3356,11 @@ class FRPManagerUI {
                 body: JSON.stringify(body)
             });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '已保存' : '保存失败'),
+            this.showMessage(d.message || (d.success ? tt("已保存", "Saved") : tt('保存失败', 'Save failed')),
                              d.success ? 'success' : 'error');
             this.loadAutoStart();
         } catch (e) {
-            this.showMessage('保存开机启动设置失败', 'error');
+            this.showMessage(tt('保存开机启动设置失败', 'Failed to save autostart settings'), 'error');
         }
     }
     
@@ -2804,7 +3392,7 @@ class FRPManagerUI {
                 this.logContent.scrollTop = this.logContent.scrollHeight;
             }
         } catch (error) {
-            this.logContent.textContent = '无法加载日志';
+            this.logContent.textContent = tt('无法加载日志', 'Failed to load log');
         }
     }
 
@@ -2812,7 +3400,7 @@ class FRPManagerUI {
     renderLog(text) {
         if (!text) return '';
         const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        const cls = { frps: 'frps', frpc: 'frpc', frp: 'frp', '面板': 'panel' };
+        const cls = { frps: 'frps', frpc: 'frpc', frp: 'frp', [tt("面板", "Panel")]: 'panel' };
         return text.split('\n').map(line => {
             const m = /^\[(frps|frpc|frp|面板)\]\s?/.exec(line);
             if (!m) {
@@ -2826,16 +3414,16 @@ class FRPManagerUI {
     }
 
     async clearLog() {
-        if (!confirm('将清空 logs/ 目录下所有 frp 运行日志（文件保留、内容清空），是否继续？')) {
+        if (!confirm(tt("将清空 logs/ 目录下所有 frp 运行日志（文件保留、内容清空），是否继续？", "This will clear all frp runtime logs under logs/ (files kept, contents cleared). Continue?"))) {
             return;
         }
         try {
             const resp = await fetch('/api/log/clear', { method: 'POST' });
             const data = await resp.json();
-            this.showMessage(data.message || '日志已清空', data.success ? 'success' : 'error');
+            this.showMessage(data.message || tt("日志已清空", "Logs cleared"), data.success ? 'success' : 'error');
             this.loadLog();
         } catch (error) {
-            this.showMessage('清空日志失败', 'error');
+            this.showMessage(tt('清空日志失败', 'Failed to clear log'), 'error');
         }
     }
 
@@ -2845,15 +3433,15 @@ class FRPManagerUI {
             const resp = await fetch('/api/info');
             const d = await resp.json();
             const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
-            set('frpcVersion', d.frpc_ready ? (d.frpc_version || '未知') : '缺失');
-            set('frpsVersion', d.frps_ready ? (d.frps_version || '未知') : '缺失');
+            set('frpcVersion', d.frpc_ready ? (d.frpc_version || tt("未知", "Unknown")) : tt("缺失", "Missing"));
+            set('frpsVersion', d.frps_ready ? (d.frps_version || tt("未知", "Unknown")) : tt("缺失", "Missing"));
             set('frpcPath', d.frpc_bin || '—');
             set('frpsPath', d.frps_bin || '—');
             set('binPlatform', d.release_platform || '—');
             set('binDirText', d.bin_dir || '—');
             set('logDirText', d.log_dir || '—');
         } catch (e) {
-            console.error('加载二进制信息失败:', e);
+            console.error(tt("加载二进制信息失败:", "Failed to load binary info: "), e);
         }
     }
 
@@ -2964,7 +3552,7 @@ class FRPManagerUI {
         let empty = panel.querySelector('.vsel-empty');
         if (!shown) {
             if (!empty) { empty = document.createElement('div'); empty.className = 'vsel-empty'; panel.appendChild(empty); }
-            empty.textContent = '没有匹配的版本';
+            empty.textContent = tt('没有匹配的版本', 'No matching version');
             empty.style.display = '';
         } else if (empty) {
             empty.style.display = 'none';
@@ -2984,16 +3572,16 @@ class FRPManagerUI {
         const tagEl = el.querySelector('.vsel-tag');
         const selItem = list.find(x => x.version === cur);
         if (!list.length) {
-            if (verEl) verEl.textContent = '未找到可用版本';
+            if (verEl) verEl.textContent = tt('未找到可用版本', 'No available version found');
             if (tagEl) tagEl.textContent = '';
             el.setAttribute('data-pending', '0');
         } else if (selItem) {
             if (verEl) verEl.textContent = selItem.version;
-            if (tagEl) tagEl.textContent = selItem.active ? '· 当前生效' : '· 待切换';
+            if (tagEl) tagEl.textContent = selItem.active ? tt("· 当前生效", "· Active") : tt("· 待切换", "· Pending");
             el.setAttribute('data-pending', selItem.active ? '0' : '1');
         } else {
-            if (verEl) verEl.textContent = '请选择版本';
-            if (tagEl) tagEl.textContent = list.length ? `· ${list.length} 个可用` : '';
+            if (verEl) verEl.textContent = tt('请选择版本', 'Select a version');
+            if (tagEl) tagEl.textContent = list.length ? `· ${list.length}${tt(" 个可用", " available")}` : '';
             el.setAttribute('data-pending', '0');
         }
         el.querySelectorAll('.vsel-opt').forEach(o => {
@@ -3009,21 +3597,21 @@ class FRPManagerUI {
         if (!panel) return;
         const arr = list || [];
         el.__list = arr;
-        const srcName = { active: '生效中', bin: 'bin', versions: '归档', temp: '解压包' };
+        const srcName = { active: tt("生效中", "Active"), bin: 'bin', versions: tt("归档", "Archived"), temp: tt("解压包", "Package") };
         const rows = arr.map(item => {
             const size = item.size ? this.fmtSize(item.size) : '';
             return '<div class="vsel-opt" role="option" tabindex="-1" data-v="' + this.escHtml(item.version) + '"'
                  + ' title="' + this.escHtml(item.path || '') + '">'
                  + '<span class="vsel-tick">✓</span>'
                  + '<span class="vsel-v">' + this.escHtml(item.version) + '</span>'
-                 + (item.active ? '<span class="vsel-badge b-active">生效中</span>' : '')
+                 + (item.active ? tt("<span class=\"vsel-badge b-active\">生效中</span>", "<span class=\"vsel-badge b-active\">Active</span>") : '')
                  + '<span class="vsel-badge">' + this.escHtml(srcName[item.origin] || item.origin) + '</span>'
                  + (size ? '<span class="vsel-size">' + this.escHtml(size) + '</span>' : '')
                  + '</div>';
         }).join('');
         const search = arr.length > 8
-            ? '<input class="vsel-search" type="text" placeholder="筛选版本…" autocomplete="off">' : '';
-        panel.innerHTML = search + (rows || '<div class="vsel-empty" data-static="1">未找到可用版本</div>');
+            ? tt("<input class=\"vsel-search\" type=\"text\" placeholder=\"筛选版本…\" autocomplete=\"off\">", "<input class=\"vsel-search\" type=\"text\" placeholder=\"Filter versions…\" autocomplete=\"off\">") : '';
+        panel.innerHTML = search + (rows || tt("<div class=\"vsel-empty\" data-static=\"1\">未找到可用版本</div>", "<div class=\"vsel-empty\" data-static=\"1\">No versions found</div>"));
         if (modeLabel) panel.setAttribute('aria-label', modeLabel);
         // 保持已有选择；否则落在当前生效版本（没有生效版本则由用户挑）
         if (!el.__sel || !arr.some(x => x.version === el.__sel)) {
@@ -3052,11 +3640,11 @@ class FRPManagerUI {
         if (this.verSwitchHint) {
             if (!jobs.length) {
                 this.verSwitchHint.textContent =
-                    '当前选择已是生效版本。选择其它版本后点「切换到所选版本」。';
+                    tt('当前选择已是生效版本。选择其它版本后点「切换到所选版本」。', 'Current selection is the active version. Pick another then click "Switch to selected version".');
             } else {
                 const txt = jobs.map(j => (j[0] === 'client' ? 'frpc' : 'frps') + ' → ' + j[1]).join('，');
                 this.verSwitchHint.textContent =
-                    '待切换：' + txt + '（正在运行的对应进程会占用文件，请先停止）';
+                    tt('待切换：', 'Pending switch: ') + txt + tt("（正在运行的对应进程会占用文件，请先停止）", "(a running process locks these files; stop it first)");
             }
         }
         return jobs;
@@ -3069,19 +3657,19 @@ class FRPManagerUI {
             const resp = await fetch('/api/bin/versions');
             const d = await resp.json();
             if (!d.success) {
-                if (this.verScanNote) this.verScanNote.textContent = d.message || '扫描失败';
+                if (this.verScanNote) this.verScanNote.textContent = d.message || tt('扫描失败', 'Scan failed');
                 return;
             }
-            this.fillVSel(this.frpcVerSel, d.client, 'frpc 可用版本');
-            this.fillVSel(this.frpsVerSel, d.server, 'frps 可用版本');
+            this.fillVSel(this.frpcVerSel, d.client, tt("frpc 可用版本", "Available frpc versions"));
+            this.fillVSel(this.frpsVerSel, d.server, tt("frps 可用版本", "Available frps versions"));
             if (this.versionsDirText) this.versionsDirText.textContent = d.versions_dir || '—';
             if (this.verScanNote) {
                 const n = (d.client || []).length, m = (d.server || []).length;
-                this.verScanNote.textContent = `frpc ${n} 个 / frps ${m} 个 · ${d.platform}`;
+                this.verScanNote.textContent = `frpc ${n}${tt(" 个 / frps ", " units / frps ")}${m}${tt(" 个 · ", " units · ")}${d.platform}`;
             }
         } catch (e) {
-            if (this.verScanNote) this.verScanNote.textContent = '扫描失败';
-            console.error('扫描本地版本失败:', e);
+            if (this.verScanNote) this.verScanNote.textContent = tt('扫描失败', 'Scan failed');
+            console.error(tt("扫描本地版本失败:", "Failed to scan local versions: "), e);
         } finally {
             this._syncVerSwitchBtn();
         }
@@ -3090,12 +3678,12 @@ class FRPManagerUI {
     async switchVersions() {
         const jobs = this._verJobs();
         if (!jobs.length) {
-            this.showMessage('所选版本已是当前生效版本，无需切换', 'warning');
+            this.showMessage(tt('所选版本已是当前生效版本，无需切换', 'Selected version is already active; no switch needed'), 'warning');
             this._syncVerSwitchBtn();
             return;
         }
-        if (!confirm('切换到：' + jobs.map(j => (j[0] === 'client' ? 'frpc' : 'frps') + ' ' + j[1]).join('，')
-                     + '？\n原版本会自动归档到 bin/versions/ 以便随时切回。')) return;
+        if (!confirm(tt("切换到：", "Switch to: ") + jobs.map(j => (j[0] === 'client' ? 'frpc' : 'frps') + ' ' + j[1]).join('，')
+                     + tt("？\n原版本会自动归档到 bin/versions/ 以便随时切回。", "?\nThe current version will be archived to bin/versions/ so you can switch back anytime."))) return;
         this.switchVerBtn.disabled = true;
         const msgs = [];
         let allOk = true;
@@ -3107,14 +3695,14 @@ class FRPManagerUI {
                     body: JSON.stringify({ mode: pair[0], version: pair[1] })
                 });
                 const d = await resp.json();
-                msgs.push(d.message || (d.success ? '已切换' : '切换失败'));
+                msgs.push(d.message || (d.success ? tt("已切换", "Switched") : tt("切换失败", "Switch failed")));
                 if (!d.success) allOk = false;
             }
             this.showMessage(msgs.join(' ｜ '), allOk ? 'success' : 'error');
             this.loadBinInfo();
             this.loadVersions();
         } catch (e) {
-            this.showMessage('版本切换请求失败', 'error');
+            this.showMessage(tt('版本切换请求失败', 'Version switch request failed'), 'error');
         } finally {
             this._syncVerSwitchBtn();
         }
@@ -3123,18 +3711,18 @@ class FRPManagerUI {
     async checkUpdate() {
         if (!this.checkUpdateBtn) return;
         this.checkUpdateBtn.disabled = true;
-        this.showMessage('正在查询最新版本...', 'info');
+        this.showMessage(tt('正在查询最新版本...', 'Querying latest version...'), 'info');
         try {
             const resp = await fetch('/api/frp/latest');
             const d = await resp.json();
             if (d.success) {
-                this.showMessage(`最新 frp ${d.latest}（本地 frpc ${d.current_c || '-'} / frps ${d.current_s || '-'}）`,
+                this.showMessage(`${tt("最新 frp ", "Latest frp ")}${d.latest}${tt("（本地 frpc ", "(local frpc ")}${d.current_c || '-'} / frps ${d.current_s || '-'}）`,
                                  'success');
             } else {
-                this.showMessage(d.message || '查询失败', 'error');
+                this.showMessage(d.message || tt("查询失败", "Query failed"), 'error');
             }
         } catch (e) {
-            this.showMessage('查询最新版本失败（网络受限）', 'error');
+            this.showMessage(tt('查询最新版本失败（网络受限）', 'Failed to query latest version (network restricted)'), 'error');
         } finally {
             this.checkUpdateBtn.disabled = false;
         }
@@ -3152,15 +3740,15 @@ class FRPManagerUI {
                 if (this.apiDashUrl) this.apiDashUrl.value = '—';
                 set('apiBase', '—');
                 set('apiAuth', '—');
-                set('apiProbe', '未配置');
+                set('apiProbe', tt("未配置", "Not configured"));
                 set('apiCurl', '—');
                 if (this.apiUser) this.apiUser.value = '';
                 if (this.apiPwd) this.apiPwd.value = '';
-                if (this.apiCfgName) this.apiCfgName.textContent = d.file ? ('配置文件 ' + d.file.split(/[\\/]/).pop()) : '未找到配置';
+                if (this.apiCfgName) this.apiCfgName.textContent = d.file ? (tt("配置文件 ", "Config file ") + d.file.split(/[\\/]/).pop()) : tt("未找到配置", "Config not found");
                 const box = document.getElementById('apiResult');
                 if (box) {
                     box.className = 'api-result show fail';
-                    box.innerHTML = this.esc(d.error || '服务端未启用管理 API');
+                    box.innerHTML = this.esc(d.error || tt("服务端未启用管理 API", "Management API is not enabled on the server"));
                 }
                 const eps = document.getElementById('apiEndpoints');
                 if (eps) eps.innerHTML = '';
@@ -3169,7 +3757,7 @@ class FRPManagerUI {
             if (this.apiPort && !this.apiPort.value && d.port) this.apiPort.placeholder = d.port;
             if (this.apiCfgName) {
                 const nm = (d.file || '').split(/[\\/]/).pop();
-                this.apiCfgName.textContent = nm ? ('来源 ' + nm) : '服务端配置';
+                this.apiCfgName.textContent = nm ? (tt("来源 ", "Source ") + nm) : tt("服务端配置", "Server config");
             }
 
             // Basic Auth 凭证：用户名直接回填；密码只在用户没在编辑时才回填，避免打断输入
@@ -3188,11 +3776,11 @@ class FRPManagerUI {
             set('apiBase', d.api_base);
             const bindEl = document.getElementById('apiBind');
             if (bindEl) {
-                bindEl.textContent = d.bind_addr + (d.local_only ? '（只监听本机，外部访问不了）' : '');
+                bindEl.textContent = d.bind_addr + (d.local_only ? tt("（只监听本机，外部访问不了）", "(listening on localhost only — not reachable from outside)") : '');
                 bindEl.style.color = d.local_only ? 'var(--amber)' : '';
             }
-            set('apiAuth', d.auth + (d.user ? `（用户 ${d.user}）` : ''));
-            set('apiProbe', '未检测');
+            set('apiAuth', d.auth + (d.user ? `${tt("（用户 ", "(user ")}${d.user}）` : ''));
+            set('apiProbe', tt("未检测", "Not tested"));
             const eps = document.getElementById('apiEndpoints');
             if (eps) {
                 eps.innerHTML = (d.endpoints || []).map(e =>
@@ -3204,7 +3792,7 @@ class FRPManagerUI {
             const cred = (d.user || 'admin') + ':' + (d.pwd || '');
             set('apiCurl', `curl -u ${cred} ${base}/api/serverinfo`);
         } catch (e) {
-            console.error('加载 API 信息失败:', e);
+            console.error(tt("加载 API 信息失败:", "Failed to load API info: "), e);
         }
     }
 
@@ -3213,10 +3801,10 @@ class FRPManagerUI {
         const user = (this.apiUser && this.apiUser.value || '').trim();
         const pwd = (this.apiPwd && this.apiPwd.value || '').trim();
         if (!user) {
-            this.showMessage('用户名不能为空', 'error');
+            this.showMessage(tt('用户名不能为空', 'Username cannot be empty'), 'error');
             return;
         }
-        if (!confirm(`确定把管理 API 的账号密码写入服务端配置文件吗？\n\n账号：${user}\n密码：${pwd || '(不改)'}\n\n原配置会自动备份，改完需重启 frps 生效。`)) {
+        if (!confirm(`${tt("确定把管理 API 的账号密码写入服务端配置文件吗？\\n\\n账号：", "Write the management API credentials into the server config?\n\nUser: ")}${user}${tt("\\n密码：", "\nPassword: ")}${pwd || tt("(不改)", "(unchanged)")}${tt("\\n\\n原配置会自动备份，改完需重启 frps 生效。", "\n\nThe original config is backed up automatically; restart frps for the change to take effect.")}`)) {
             return;
         }
         this.apiAuthSave.disabled = true;
@@ -3230,16 +3818,16 @@ class FRPManagerUI {
             const d = await resp.json();
             if (box) {
                 box.className = 'api-result show ' + (d.success ? 'ok' : 'fail');
-                box.textContent = d.message || (d.success ? '已保存' : '保存失败');
+                box.textContent = d.message || (d.success ? tt("已保存", "Saved") : tt('保存失败', 'Save failed'));
             }
-            this.showMessage(d.message || (d.success ? '已保存' : '保存失败'), d.success ? 'success' : 'error');
+            this.showMessage(d.message || (d.success ? tt("已保存", "Saved") : tt('保存失败', 'Save failed')), d.success ? 'success' : 'error');
             if (d.success) {
                 this._apiPwdDirty = false;
                 this.loadApiInfo();
             }
         } catch (e) {
-            if (box) { box.className = 'api-result show fail'; box.textContent = '保存失败：' + e; }
-            this.showMessage('保存失败', 'error');
+            if (box) { box.className = 'api-result show fail'; box.textContent = tt('保存失败：', 'Save failed: ') + e; }
+            this.showMessage(tt('保存失败', 'Save failed'), 'error');
         } finally {
             this.apiAuthSave.disabled = false;
         }
@@ -3247,17 +3835,17 @@ class FRPManagerUI {
 
     async copyApiCurl() {
         const txt = (this.apiCurl && this.apiCurl.textContent || '').trim();
-        if (!txt || txt === '—') { this.showMessage('还没有可复制的调用示例', 'info'); return; }
+        if (!txt || txt === '—') { this.showMessage(tt('还没有可复制的调用示例', 'No callable example to copy yet'), 'info'); return; }
         try {
             await navigator.clipboard.writeText(txt);
-            this.showMessage('已复制调用命令', 'success');
+            this.showMessage(tt('已复制调用命令', 'Command copied'), 'success');
         } catch (e) {
             // 剪贴板 API 在非 HTTPS / 旧浏览器上不可用，退回到选中文本
             const r = document.createRange();
             r.selectNodeContents(this.apiCurl);
             const sel = window.getSelection();
             sel.removeAllRanges(); sel.addRange(r);
-            this.showMessage('已选中，请按 Ctrl+C 复制', 'info');
+            this.showMessage(tt('已选中，请按 Ctrl+C 复制', 'Selected, press Ctrl+C to copy'), 'info');
         }
     }
 
@@ -3265,7 +3853,7 @@ class FRPManagerUI {
         if (!this.apiProbeBtn) return;
         this.apiProbeBtn.disabled = true;
         const el = document.getElementById('apiProbe');
-        if (el) { el.textContent = '检测中...'; el.style.color = ''; }
+        if (el) { el.textContent = tt('检测中...', 'Checking...'); el.style.color = ''; }
 
         const q = [];
         if (this.apiHost && this.apiHost.value.trim()) q.push('host=' + encodeURIComponent(this.apiHost.value.trim()));
@@ -3297,16 +3885,16 @@ class FRPManagerUI {
             if (d.ini_issue && this.apiResult && !d.ok) {
                 this.apiResult.insertAdjacentHTML('beforeend',
                     `<div style="margin-top:6px;color:var(--amber)">` +
-                    `检测到服务端配置是 <b>ini</b> 且用了 <code>[webServer]</code> 段 —— ` +
-                    `frp 的 ini 解析器不认它，所以管理面板不会启动。` +
-                    `点上方黄色「一键修复」自动转成 <code>dashboard_*</code> 字段。</div>`);
+                    `${tt("检测到服务端配置是 <b>ini</b> 且用了 <code>[webServer]</code> 段 —— ", "The server config is <b>ini</b> and uses a <code>[webServer]</code> section — ")}` +
+                    `${tt("frp 的 ini 解析器不认它，所以管理面板不会启动。", "frp's ini parser does not recognize it, so the dashboard will not start.")}` +
+                    `${tt("点上方黄色「一键修复」自动转成 <code>dashboard_*</code> 字段。</div>", "Click the yellow \"Fix now\" button above to convert it to <code>dashboard_*</code> fields.</div>")}`);
             }
-            this.showMessage(d.msg || '检测完成', d.ok ? 'success' : 'error');
+            this.showMessage(d.msg || tt("检测完成", "Test complete"), d.ok ? 'success' : 'error');
             if (d.ok) this.refreshServerInfo();
         } catch (e) {
-            if (el) { el.textContent = '✗ 检测失败'; el.style.color = 'var(--red)'; }
-            render('fail', '发起探测失败：' + this.esc(String(e)));
-            this.showMessage('检测 API 失败', 'error');
+            if (el) { el.textContent = tt('✗ 检测失败', '✗ Check failed'); el.style.color = 'var(--red)'; }
+            render('fail', tt("发起探测失败：", "Probe failed: ") + this.esc(String(e)));
+            this.showMessage(tt('检测 API 失败', 'Failed to check API'), 'error');
         } finally {
             this.apiProbeBtn.disabled = false;
         }
@@ -3318,12 +3906,12 @@ class FRPManagerUI {
         const setAll = (v) => ids.forEach(id => { const e = document.getElementById(id); if (e) e.textContent = v; });
         if (data.running === false && data.enabled === false) {
             setAll('-');
-            if (body) body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#fbbf24;">${this.esc(data.error || '未启用服务端管理API')}</td></tr>`;
+            if (body) body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#fbbf24;">${this.esc(data.error || tt("未启用服务端管理API", "Server management API is not enabled"))}</td></tr>`;
             return;
         }
         if (data.running === false) {
             setAll('-');
-            if (body) body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#fbbf24;">${this.esc(data.error || '服务端未运行')}</td></tr>`;
+            if (body) body.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#fbbf24;">${this.esc(data.error || tt("服务端未运行", "frps is not running"))}</td></tr>`;
             return;
         }
         if (data.error) {
@@ -3341,7 +3929,7 @@ class FRPManagerUI {
         set(prefix + 'Out', this.fmtBytes(t.today_out));
         const list = data.proxies || [];
         if (!list.length) {
-            if (body) body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#5d718c;">暂无代理</td></tr>';
+            if (body) body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#5d718c;">' + tt('暂无代理', 'No proxies') + '</td></tr>';
             return;
         }
         if (body) {
@@ -3370,24 +3958,24 @@ class FRPManagerUI {
                 panel.style.display = show ? 'block' : 'none';
             }
         } catch (e) {
-            console.error('获取服务端信息失败:', e);
+            console.error(tt("获取服务端信息失败:", "Failed to get server info: "), e);
             const panel = document.getElementById('dsServerInfo');
             if (panel) panel.style.display = 'none';
             const b = document.getElementById('dsServerInfoBody');
-            if (b) b.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#e74c3c;">获取失败</td></tr>';
+            if (b) b.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#e74c3c;">' + tt('获取失败', 'Failed to fetch') + '</td></tr>';
         }
     }
     
     async fixServerConfig() {
-        if (!confirm('将把服务端配置里的 [webServer] 段转换成 frp 认的 dashboard_* 字段，'
-            + '并自动备份原文件（*.bak-时间戳）。\n转换后需重启 frps 才生效。是否继续？')) {
+        if (!confirm(tt("将把服务端配置里的 [webServer] 段转换成 frp 认的 dashboard_* 字段，", "The [webServer] section in the server config will be converted to frp's dashboard_* fields, ")
+            + tt("并自动备份原文件（*.bak-时间戳）。\n转换后需重启 frps 才生效。是否继续？", "and the original file is backed up (*.bak-timestamp).\nfrps must be restarted for the change to take effect. Continue?"))) {
             return;
         }
         this.fixConfigBtn.disabled = true;
         try {
             const resp = await fetch('/api/server/fix-config', { method: 'POST' });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '已修复' : '修复失败'),
+            this.showMessage(d.message || (d.success ? tt("已修复", "Fixed") : tt("修复失败", "Fix failed")),
                              d.success ? 'success' : 'error');
             if (d.success) {
                 await this.loadConfig('server');
@@ -3395,7 +3983,7 @@ class FRPManagerUI {
                 setTimeout(() => this.probeApi(), 300);
             }
         } catch (e) {
-            this.showMessage('修复配置失败', 'error');
+            this.showMessage(tt('修复配置失败', 'Failed to repair config'), 'error');
         } finally {
             this.fixConfigBtn.disabled = false;
         }
@@ -3429,10 +4017,10 @@ class FRPManagerUI {
             if (this.watchdogMaxCrashes) this.watchdogMaxCrashes.value = d.watchdog_max_crashes || 5;
             this.renderWatchdogStatus(d.status);
             if (this.wdSettingNote) {
-                this.wdSettingNote.textContent = d.watchdog_enabled ? '已启用' : '已停用';
+                this.wdSettingNote.textContent = d.watchdog_enabled ? tt("已启用", "Enabled") : tt('已停用', 'Disabled');
                 this.wdSettingNote.style.color = d.watchdog_enabled ? '#22c55e' : '#ef4444';
             }
-        } catch (e) { console.error('读取自愈设置失败:', e); }
+        } catch (e) { console.error(tt("读取自愈设置失败:", "Failed to load self-healing settings: "), e); }
     }
 
     async saveWatchdog() {
@@ -3448,22 +4036,91 @@ class FRPManagerUI {
                 body: JSON.stringify(body)
             });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '已保存' : '保存失败'), d.success ? 'success' : 'error');
+            this.showMessage(d.message || (d.success ? tt("已保存", "Saved") : tt('保存失败', 'Save failed')), d.success ? 'success' : 'error');
             this.loadWatchdog();
-        } catch (e) { this.showMessage('保存自愈设置失败', 'error'); }
+        } catch (e) { this.showMessage(tt('保存自愈设置失败', 'Failed to save self-healing settings'), 'error'); }
+    }
+
+    // ========== v1.13.0：定时重启设置 ==========
+    fmtTs(ts) {
+        if (!ts) return '';
+        const d = new Date(ts * 1000);
+        if (isNaN(d.getTime())) return '';
+        const p = n => String(n).padStart(2, '0');
+        return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate())
+             + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+    }
+
+    async loadAutoRestart() {
+        if (!this.saveAutoRestartBtn) return;
+        try {
+            const resp = await fetch('/api/settings/autorestart');
+            if (resp.status === 401) return;
+            const d = await resp.json();
+            if (!d.success) return;
+            const s = d.settings || {};
+            if (this.autoRestartEnabled) this.autoRestartEnabled.checked = !!s.auto_restart_enabled;
+            if (this.autoRestartMode) this.autoRestartMode.value = s.auto_restart_mode === 'daily' ? 'daily' : 'interval';
+            if (this.autoRestartInterval) this.autoRestartInterval.value = s.auto_restart_interval || 24;
+            if (this.autoRestartTime) this.autoRestartTime.value = s.auto_restart_time || '04:00';
+            if (this.autoRestartFrpc) this.autoRestartFrpc.checked = s.auto_restart_frpc !== false;
+            if (this.autoRestartFrps) this.autoRestartFrps.checked = s.auto_restart_frps !== false;
+            if (this.arSettingNote) {
+                if (!s.auto_restart_enabled) {
+                    this.arSettingNote.textContent = tt('已停用', 'Disabled');
+                    this.arSettingNote.style.color = '#ef4444';
+                } else {
+                    const lastC = this.fmtTs(s.last_fire && s.last_fire.client);
+                    const lastS = this.fmtTs(s.last_fire && s.last_fire.server);
+                    const next = this.fmtTs(s.next_due);
+                    let txt = tt("已启用", "Enabled");
+                    if (next) txt += tt(" · 下次约 ", " · next around ") + next;
+                    if (lastC) txt += tt(" · frpc 上次 ", " · frpc last ") + lastC;
+                    if (lastS) txt += tt(" · frps 上次 ", " · frps last ") + lastS;
+                    this.arSettingNote.textContent = txt;
+                    this.arSettingNote.style.color = '#22c55e';
+                }
+            }
+        } catch (e) { console.error(tt("读取定时重启设置失败:", "Failed to load scheduled restart settings: "), e); }
+    }
+
+    async saveAutoRestart() {
+        if (!this.saveAutoRestartBtn) return;
+        const body = {
+            auto_restart_enabled: this.autoRestartEnabled ? this.autoRestartEnabled.checked : false,
+            auto_restart_mode: this.autoRestartMode ? this.autoRestartMode.value : 'interval',
+            auto_restart_interval: this.autoRestartInterval ? (parseInt(this.autoRestartInterval.value, 10) || 24) : 24,
+            auto_restart_time: this.autoRestartTime ? this.autoRestartTime.value : '04:00',
+            auto_restart_frpc: this.autoRestartFrpc ? this.autoRestartFrpc.checked : true,
+            auto_restart_frps: this.autoRestartFrps ? this.autoRestartFrps.checked : true
+        };
+        if (body.auto_restart_enabled && !body.auto_restart_frpc && !body.auto_restart_frps) {
+            this.showMessage(tt('请至少勾选 FRPC 或 FRPS 之一', 'Select at least one of FRPC or FRPS'), 'error');
+            return;
+        }
+        try {
+            const resp = await fetch('/api/settings/autorestart', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            const d = await resp.json();
+            this.showMessage(d.message || (d.success ? tt("已保存", "Saved") : tt('保存失败', 'Save failed')), d.success ? 'success' : 'error');
+            this.loadAutoRestart();
+        } catch (e) { this.showMessage(tt('保存定时重启设置失败', 'Failed to save auto-restart settings'), 'error'); }
     }
 
     renderWatchdogStatus(st) {
         if (!st || !this.wdState) return;
         const enabled = !!st.enabled;
-        this.wdState.textContent = enabled ? '守护运行中' : '守护已停用';
+        this.wdState.textContent = enabled ? tt("守护运行中", "Watchdog running") : tt("守护已停用", "Watchdog disabled");
         this.wdState.className = 'wd-state ' + (enabled ? 'wd-on' : 'wd-off');
-        if (this.wdMeta) this.wdMeta.textContent = '连崩上限：' + (st.max_crashes || '-') + ' 次';
+        if (this.wdMeta) this.wdMeta.textContent = tt('连崩上限：', 'Crash limit: ') + (st.max_crashes || '-') + tt(' 次', ' times');
         const fmt = (mode, label) => {
             const m = st[mode] || {desired: false, crashes: 0, running: false};
-            const desired = m.desired ? '期望运行' : '未启用';
-            const running = m.running ? '✅ 运行中' : '⚠ 未运行';
-            const crashes = m.crashes ? ('连崩 ' + m.crashes + ' 次') : '无崩溃';
+            const desired = m.desired ? tt("期望运行", "Expected") : tt("未启用", "Disabled");
+            const running = m.running ? tt("✅ 运行中", "✅ Running") : tt("⚠ 未运行", "⚠ Not running");
+            const crashes = m.crashes ? (tt("连崩 ", "Crashes ") + m.crashes + tt(' 次', ' times')) : tt("无崩溃", "No crashes");
             return '<div class="wd-row"><span class="wd-l">' + label + '</span>'
                  + '<span class="wd-d">' + desired + '</span>'
                  + '<span class="wd-r">' + running + '</span>'
@@ -3498,10 +4155,10 @@ class FRPManagerUI {
             if (this.alertEmailTo) this.alertEmailTo.value = s.alert_email_to || '';
             if (this.alertEmailPass) this.alertEmailPass.value = '';
             if (this.alertStatusNote) {
-                this.alertStatusNote.textContent = s.alert_enabled ? '已启用' : '已停用';
+                this.alertStatusNote.textContent = s.alert_enabled ? tt("已启用", "Enabled") : tt('已停用', 'Disabled');
                 this.alertStatusNote.style.color = s.alert_enabled ? '#22c55e' : '#ef4444';
             }
-        } catch (e) { console.error('读取告警设置失败:', e); }
+        } catch (e) { console.error(tt("读取告警设置失败:", "Failed to load alert settings: "), e); }
     }
 
     async saveAlert() {
@@ -3526,9 +4183,9 @@ class FRPManagerUI {
                 body: JSON.stringify(body)
             });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '已保存' : '保存失败'), d.success ? 'success' : 'error');
+            this.showMessage(d.message || (d.success ? tt("已保存", "Saved") : tt('保存失败', 'Save failed')), d.success ? 'success' : 'error');
             this.loadAlert();
-        } catch (e) { this.showMessage('保存告警设置失败', 'error'); }
+        } catch (e) { this.showMessage(tt('保存告警设置失败', 'Failed to save alert settings'), 'error'); }
     }
 
     async testAlert() {
@@ -3537,8 +4194,8 @@ class FRPManagerUI {
         try {
             const resp = await fetch('/api/settings/alert/test', { method: 'POST' });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '已发送' : '发送失败'), d.success ? 'success' : 'error');
-        } catch (e) { this.showMessage('发送测试告警失败', 'error'); }
+            this.showMessage(d.message || (d.success ? tt("已发送", "Sent") : tt("发送失败", "Send failed")), d.success ? 'success' : 'error');
+        } catch (e) { this.showMessage(tt('发送测试告警失败', 'Failed to send test alert'), 'error'); }
         finally { this.testAlertBtn.disabled = false; }
     }
 
@@ -3546,20 +4203,20 @@ class FRPManagerUI {
     async importFrp() {
         if (!this.importBtn) return;
         const f = this.importFile && this.importFile.files && this.importFile.files[0];
-        if (!f) { this.showMessage('请先选择发布包文件', 'warning'); return; }
+        if (!f) { this.showMessage(tt('请先选择发布包文件', 'Select a release package file first'), 'warning'); return; }
         const fd = new FormData();
         fd.append('file', f);
         this.importBtn.disabled = true;
-        this.importBtn.textContent = '上传中…';
+        this.importBtn.textContent = tt('上传中…', 'Uploading…');
         try {
             const resp = await fetch('/api/import-frp', { method: 'POST', body: fd });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '导入成功' : '导入失败'), d.success ? 'success' : 'error');
+            this.showMessage(d.message || (d.success ? tt("导入成功", "Imported") : tt("导入失败", "Import failed")), d.success ? 'success' : 'error');
             if (d.success && this.loadBinInfo) this.loadBinInfo();
-        } catch (e) { this.showMessage('上传失败', 'error'); }
+        } catch (e) { this.showMessage(tt('上传失败', 'Upload failed'), 'error'); }
         finally {
             this.importBtn.disabled = false;
-            this.importBtn.textContent = '上传并安装';
+            this.importBtn.textContent = tt('上传并安装', 'Upload & Install');
         }
     }
 
@@ -3567,35 +4224,35 @@ class FRPManagerUI {
     async scanSecurity() {
         if (!this.scanSecurityBtn) return;
         this.scanSecurityBtn.disabled = true;
-        this.scanSecurityBtn.textContent = '扫描中…';
+        this.scanSecurityBtn.textContent = tt('扫描中…', 'Scanning…');
         try {
             const resp = await fetch('/api/security/scan');
             const d = await resp.json();
             this.renderSecurity(d.issues || []);
         } catch (e) {
-            if (this.securityResult) this.securityResult.innerHTML = '<span class="pm-empty">扫描失败</span>';
+            if (this.securityResult) this.securityResult.innerHTML = '<span class="pm-empty">' + tt('扫描失败', 'Scan failed') + '</span>';
         } finally {
             this.scanSecurityBtn.disabled = false;
-            this.scanSecurityBtn.textContent = '立即扫描';
+            this.scanSecurityBtn.textContent = tt('立即扫描', 'Scan now');
         }
     }
 
     renderSecurity(issues) {
         if (!this.securityResult) return;
         if (!issues.length) {
-            this.securityResult.innerHTML = '<div class="sec-ok">✅ 未检测到明显安全风险</div>';
+            this.securityResult.innerHTML = '<div class="sec-ok">✅ ' + tt('未检测到明显安全风险', 'No obvious security risks detected') + '</div>';
             return;
         }
-        const lv = { high: '高危', medium: '中危' };
+        const lv = { high: tt("高危", "High risk"), medium: tt("中危", "Medium risk") };
         const cls = { high: 'lv-high', medium: 'lv-medium' };
         this.securityResult.innerHTML = issues.map(it => {
-            const mode = it.mode === 'server' ? 'frps 服务端'
-                       : (it.mode === 'client' ? 'frpc 客户端' : (it.mode || '—'));
+            const mode = it.mode === 'server' ? tt("frps 服务端", "frps server")
+                       : (it.mode === 'client' ? tt("frpc 客户端", "frpc client") : (it.mode || '—'));
             return '<div class="sec-item ' + (cls[it.level] || 'lv-medium') + '">'
-                 + '<div class="sec-top"><span class="sec-badge">' + (lv[it.level] || '提示') + '</span>'
+                 + '<div class="sec-top"><span class="sec-badge">' + (lv[it.level] || tt("提示", "Tip")) + '</span>'
                  + '<span class="sec-mode">' + mode + '</span></div>'
                  + '<div class="sec-msg">' + this.escHtml(it.msg || '') + '</div>'
-                 + '<div class="sec-fix">建议：' + this.escHtml(it.fix || '—') + '</div></div>';
+                 + tt("<div class=\"sec-fix\">建议：", "<div class=\"sec-fix\">Suggestion: ") + this.escHtml(it.fix || '—') + '</div></div>';
         }).join('');
     }
 
@@ -3610,7 +4267,7 @@ class FRPManagerUI {
             this.renderAudit();
         } catch (e) {
             this._auditRaw = '';
-            if (this.auditContent) this.auditContent.textContent = '无法加载审计日志';
+            if (this.auditContent) this.auditContent.textContent = tt('无法加载审计日志', 'Failed to load audit log');
         }
     }
 
@@ -3654,7 +4311,7 @@ class FRPManagerUI {
 
         if (!rows.length) {
             box.textContent = (this._auditRaw || '').trim()
-                ? '（当前筛选条件下没有匹配的审计记录）' : '（暂无审计记录）';
+                ? tt("（当前筛选条件下没有匹配的审计记录）", "(no audit records match the current filter)") : tt("（暂无审计记录）", "(no audit records yet)");
             return;
         }
         const esc = (s) => this.escHtml(String(s == null ? '' : s));
@@ -3668,7 +4325,7 @@ class FRPManagerUI {
         };
         box.innerHTML = rows.map(r => {
             const cls = r.result === 'fail' ? 'a-fail' : 'a-ok';
-            const tag = r.result === 'fail' ? '失败' : (r.result === 'success' ? '成功' : esc(r.result));
+            const tag = r.result === 'fail' ? tt("失败", "Failed") : (r.result === 'success' ? tt("成功", "Success") : esc(r.result));
             return '<div class="audit-line">'
                 + '<span class="a-time">' + esc(r.time) + '</span>'
                 + '<span class="' + cls + '">' + tag + '</span>'
@@ -3682,7 +4339,7 @@ class FRPManagerUI {
 
     exportAudit() {
         const txt = this._auditRaw || '';
-        if (!txt.trim()) { this.showMessage('暂无可导出的审计记录', 'warning'); return; }
+        if (!txt.trim()) { this.showMessage(tt('暂无可导出的审计记录', 'No audit records to export'), 'warning'); return; }
         try {
             const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
             const a = document.createElement('a');
@@ -3692,8 +4349,8 @@ class FRPManagerUI {
                        + '-' + p2(d.getHours()) + p2(d.getMinutes()) + p2(d.getSeconds()) + '.log';
             document.body.appendChild(a); a.click();
             setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 800);
-            this.showMessage('审计日志已导出', 'success');
-        } catch (e) { this.showMessage('导出失败', 'error'); }
+            this.showMessage(tt('审计日志已导出', 'Audit log exported'), 'success');
+        } catch (e) { this.showMessage(tt('导出失败', 'Export failed'), 'error'); }
     }
 
     // ========== P1：日志轮转 / 下载 ==========
@@ -3702,14 +4359,14 @@ class FRPManagerUI {
         try {
             const resp = await fetch('/api/log/rotate', { method: 'POST' });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '已轮转' : '轮转失败'), d.success ? 'success' : 'error');
-        } catch (e) { this.showMessage('轮转日志失败', 'error'); }
+            this.showMessage(d.message || (d.success ? tt("已轮转", "Rotated") : tt("轮转失败", "Rotation failed")), d.success ? 'success' : 'error');
+        } catch (e) { this.showMessage(tt('轮转日志失败', 'Failed to rotate log'), 'error'); }
     }
 
     downloadLog() {
         if (!this.downloadLogBtn) return;
         const name = this.logDownloadSel ? this.logDownloadSel.value : '';
-        if (!name) { this.showMessage('请先选择要下载的日志文件', 'warning'); return; }
+        if (!name) { this.showMessage(tt('请先选择要下载的日志文件', 'Select a log file to download first'), 'warning'); return; }
         window.open('/api/log/download?name=' + encodeURIComponent(name), '_blank', 'noopener');
     }
 
@@ -3729,23 +4386,23 @@ class FRPManagerUI {
                 method: 'POST', headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({auto_snapshot: v})
             });
-            this.showMessage(v ? '已开启保存时自动快照' : '已关闭自动快照', 'success');
-        } catch (e) { this.showMessage('保存快照设置失败', 'error'); }
+            this.showMessage(v ? tt("已开启保存时自动快照", "Auto snapshot on save enabled") : tt("已关闭自动快照", "Auto snapshot disabled"), 'success');
+        } catch (e) { this.showMessage(tt('保存快照设置失败', 'Failed to save snapshot settings'), 'error'); }
     }
 
     async loadSnapshots() {
         if (!this.snapshotList) return;
         const type = this.snapType ? this.snapType.value : 'client';
-        this.snapshotList.innerHTML = '<p class="hint">加载中…</p>';
+        this.snapshotList.innerHTML = '<p class="hint">' + tt('加载中…', 'Loading…') + '</p>';
         try {
             const resp = await fetch('/api/snapshots/' + type);
             const d = await resp.json();
             const list = (d.snapshots || []);
             if (!list.length) {
-                this.snapshotList.innerHTML = '<p class="hint" data-i18n="snap.empty">暂无快照</p>';
+                this.snapshotList.innerHTML = '<p class="hint" data-i18n="snap.empty">' + tt('暂无快照', 'No snapshots yet') + '</p>';
                 return;
             }
-            let html = '<table class="snap-table"><thead><tr><th data-i18n="snap.time">时间</th><th data-i18n="snap.comment">备注</th><th data-i18n="snap.ops">操作</th></tr></thead><tbody>';
+            let html = tt("<table class=\"snap-table\"><thead><tr><th data-i18n=\"snap.time\">时间</th><th data-i18n=\"snap.comment\">备注</th><th data-i18n=\"snap.ops\">操作</th></tr></thead><tbody>", "<table class=\"snap-table\"><thead><tr><th data-i18n=\"snap.time\">Time</th><th data-i18n=\"snap.comment\">Comment</th><th data-i18n=\"snap.ops\">Actions</th></tr></thead><tbody>");
             list.forEach(s => {
                 html += '<tr>'
                     + '<td>' + this.escHtml(s.ts) + '</td>'
@@ -3768,7 +4425,7 @@ class FRPManagerUI {
                 });
             });
         } catch (e) {
-            this.snapshotList.innerHTML = '<p class="hint">加载快照失败</p>';
+            this.snapshotList.innerHTML = '<p class="hint">' + tt('加载快照失败', 'Failed to load snapshots') + '</p>';
         }
     }
 
@@ -3776,14 +4433,14 @@ class FRPManagerUI {
         try {
             const resp = await fetch('/api/snapshot/' + type + '/' + encodeURIComponent(id));
             const d = await resp.json();
-            if (!d.success) { this.showMessage('快照不存在', 'error'); return; }
+            if (!d.success) { this.showMessage(tt('快照不存在', 'Snapshot does not exist'), 'error'); return; }
             const w = window.open('', '_blank');
             if (w) {
                 w.document.write('<pre style="padding:16px;font-family:monospace;white-space:pre-wrap;">'
                     + this.escHtml(d.content) + '</pre>');
-                w.document.title = type + ' 快照 ' + id;
+                w.document.title = type + tt(" 快照 ", " Snapshot ") + id;
             }
-        } catch (e) { this.showMessage('查看快照失败', 'error'); }
+        } catch (e) { this.showMessage(tt('查看快照失败', 'Failed to view snapshot'), 'error'); }
     }
 
     async rollbackSnapshot(type, id) {
@@ -3794,9 +4451,9 @@ class FRPManagerUI {
                 body: JSON.stringify({config_type: type, snapshot_id: id})
             });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '已回滚' : '回滚失败'), d.success ? 'success' : 'error');
+            this.showMessage(d.message || (d.success ? tt("已回滚", "Rolled back") : tt('回滚失败', 'Rollback failed')), d.success ? 'success' : 'error');
             if (d.success) { this.loadSnapshots(); if (this.configType) this.configType.value = type, this.loadConfig(type); }
-        } catch (e) { this.showMessage('回滚失败', 'error'); }
+        } catch (e) { this.showMessage(tt('回滚失败', 'Rollback failed'), 'error'); }
     }
 
     async deleteSnapshot(type, id) {
@@ -3804,9 +4461,9 @@ class FRPManagerUI {
         try {
             const resp = await fetch('/api/snapshot/' + type + '/' + encodeURIComponent(id), {method: 'DELETE'});
             const d = await resp.json();
-            this.showMessage(d.message || '已删除', d.success ? 'success' : 'error');
+            this.showMessage(d.message || tt('已删除', 'Deleted'), d.success ? 'success' : 'error');
             this.loadSnapshots();
-        } catch (e) { this.showMessage('删除失败', 'error'); }
+        } catch (e) { this.showMessage(tt('删除失败', 'Delete failed'), 'error'); }
     }
 
     // ========== P3-⑧ 安全向导 ==========
@@ -3819,7 +4476,7 @@ class FRPManagerUI {
             const d = await resp.json();
             if (this.tokenBox) this.tokenBox.value = d.token || '';
             if (this.tokenNote) this.tokenNote.textContent = t('wiz.gentip');
-        } catch (e) { this.showMessage('生成失败', 'error'); }
+        } catch (e) { this.showMessage(tt('生成失败', 'Generation failed'), 'error'); }
     }
 
     async applyToken() {
@@ -3837,7 +4494,7 @@ class FRPManagerUI {
             } else {
                 this.showMessage(d.message || t('wiz.applyfail'), 'error');
             }
-        } catch (e) { this.showMessage('应用失败', 'error'); }
+        } catch (e) { this.showMessage(tt('应用失败', 'Apply failed'), 'error'); }
     }
 
     async addSecureProxy() {
@@ -3858,9 +4515,9 @@ class FRPManagerUI {
                 body: JSON.stringify({proxy})
             });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '已添加' : '添加失败'), d.success ? 'success' : 'error');
+            this.showMessage(d.message || (d.success ? tt("已添加", "Added") : tt('添加失败', 'Add failed')), d.success ? 'success' : 'error');
             if (d.success && this.secureNote) this.secureNote.textContent = t('wiz.addedtip');
-        } catch (e) { this.showMessage('添加失败', 'error'); }
+        } catch (e) { this.showMessage(tt('添加失败', 'Add failed'), 'error'); }
     }
 
     escHtml(s) {
@@ -3869,14 +4526,22 @@ class FRPManagerUI {
 
     // ================= P2-⑳ 多语言切换 =================
     async loadI18n() {
+        // 先用本地存储即时生效，避免闪烁；再与服务器持久化值对齐
+        try {
+            const saved = localStorage.getItem('frp-lang');
+            if (saved === 'en' || saved === 'zh') {
+                CURRENT_LANG = saved;
+                this.applyLang();
+            }
+        } catch (e) {}
         try {
             const resp = await fetch('/api/i18n');
             const d = await resp.json();
-            if (d.success && d.lang) {
+            if (d.success && d.lang && d.lang !== CURRENT_LANG) {
                 CURRENT_LANG = (d.lang === 'en') ? 'en' : 'zh';
+                this.applyLang();
             }
         } catch (e) { /* 忽略，使用默认中文 */ }
-        this.applyLang();
     }
     applyLang() {
         try { localStorage.setItem('frp-lang', CURRENT_LANG); } catch (e) {}
@@ -3892,17 +4557,24 @@ class FRPManagerUI {
                 }
             }
         });
+        if (typeof this.applyDomLang === 'function') this.applyDomLang();
         if (this.langToggleTxt) {
-            this.langToggleTxt.textContent = t(CURRENT_LANG === 'en' ? 'lang.en' : 'lang.zh');
+            // 按钮显示「目标语言」：当前中文时显示 English（点击切英文），当前英文时显示 中文（点击切回中文）
+            this.langToggleTxt.textContent = t(CURRENT_LANG === 'en' ? 'lang.zh' : 'lang.en');
         }
     }
     toggleLang() {
         CURRENT_LANG = (CURRENT_LANG === 'en') ? 'zh' : 'en';
-        this.applyLang();
+        // 先切静态文案（立刻有反馈），再把偏好写到服务端，最后重绘动态内容 ——
+        // 顺序很关键：服务端要先知道新语言，重新拉回来的数据才是新语言的。
+        try { this.applyLang(); } catch (e) {}
+        const redraw = () => { try { this.reapplyLang(); } catch (e) {} };
         try {
             fetch('/api/i18n', {method:'POST', headers:{'Content-Type':'application/json'},
-                   body: JSON.stringify({lang: CURRENT_LANG})});
-        } catch (e) {}
+                   body: JSON.stringify({lang: CURRENT_LANG})}).then(redraw, redraw);
+        } catch (e) { redraw(); }
+        // 兜底：即使 fetch 失败或后端有缓存，稍后再刷一次
+        setTimeout(redraw, 1500);
     }
 
     // ================= P2-② 流量与资源监控 =================
@@ -3939,22 +4611,22 @@ class FRPManagerUI {
                 }).join('');
             }
         } catch (e) {
-            console.error('读取流量失败:', e);
-            if (this.trafficNote) this.trafficNote.textContent = '流量读取失败：' + e;
+            console.error(tt("读取流量失败:", "Failed to load traffic: "), e);
+            if (this.trafficNote) this.trafficNote.textContent = tt('流量读取失败：', 'Failed to read traffic: ') + e;
         }
     }
 
     // ================= P2-⑥ 配置模板库 =================
     async loadTemplates() {
         if (!this.templatesBody) return;
-        this.templatesBody.innerHTML = '<p class="hint">加载中…</p>';
+        this.templatesBody.innerHTML = '<p class="hint">' + tt('加载中…', 'Loading…') + '</p>';
         try {
             const resp = await fetch('/api/templates');
             const d = await resp.json();
-            if (!d.success) { this.templatesBody.innerHTML = '<p class="hint">模板读取失败</p>'; return; }
+            if (!d.success) { this.templatesBody.innerHTML = '<p class="hint">' + tt('模板读取失败', 'Failed to read templates') + '</p>'; return; }
             const list = d.templates || [];
             if (!list.length) {
-                this.templatesBody.innerHTML = '<p class="hint">暂无模板</p>';
+                this.templatesBody.innerHTML = '<p class="hint">' + tt('暂无模板', 'No templates') + '</p>';
                 return;
             }
             this.templatesBody.innerHTML = list.map(tpl => {
@@ -3977,8 +4649,8 @@ class FRPManagerUI {
                     + '</div></div>';
             }).join('');
         } catch (e) {
-            console.error('读取模板失败:', e);
-            this.templatesBody.innerHTML = '<p class="hint">模板读取失败</p>';
+            console.error(tt("读取模板失败:", "Failed to load templates: "), e);
+            this.templatesBody.innerHTML = '<p class="hint">' + tt('模板读取失败', 'Failed to read templates') + '</p>';
         }
     }
     async applyTemplate(id) {
@@ -4000,9 +4672,9 @@ class FRPManagerUI {
                 body: JSON.stringify({template_id: id, placeholders: ph})
             });
             const d = await resp.json();
-            this.showMessage(d.message || (d.success ? '已套用' : '套用失败'), d.success ? 'success' : 'error');
+            this.showMessage(d.message || (d.success ? tt("已套用", "Applied") : tt("套用失败", "Apply failed")), d.success ? 'success' : 'error');
             if (d.success) { this.loadProxies(); this.loadConfig('client'); }
-        } catch (e) { this.showMessage('套用模板失败', 'error'); }
+        } catch (e) { this.showMessage(tt('套用模板失败', 'Failed to apply template'), 'error'); }
     }
 
     // ================= P2-⑤ 表单式代理编辑器 =================
@@ -4012,15 +4684,15 @@ class FRPManagerUI {
             const resp = await fetch('/api/proxies');
             const d = await resp.json();
             if (!d.success) {
-                this.showMessage(d.message || '读取代理失败', 'error');
+                this.showMessage(d.message || tt("读取代理失败", "Failed to load proxies"), 'error');
                 return;
             }
             this._proxies = d.proxies || [];
             this._proxyFormat = d.format || '';
             this.renderProxies();
         } catch (e) {
-            console.error('读取代理失败:', e);
-            this.showMessage('读取代理失败：' + e, 'error');
+            console.error(tt("读取代理失败:", "Failed to load proxies: "), e);
+            this.showMessage(tt('读取代理失败：', 'Failed to read proxy: ') + e, 'error');
         }
     }
     renderProxies() {
@@ -4081,9 +4753,9 @@ class FRPManagerUI {
         // 插件对 tcp/udp/http 都可用，P2P 下也可用，保持可见
         const hint = document.getElementById('proxyTypeHint');
         if (hint) {
-            hint.textContent = isTcpUdp ? 'TCP/UDP：需填写远程端口'
-                : (isHttp ? 'HTTP/HTTPS：填子域名或自定义域名（需 frps 配置 vhost 端口）'
-                          : 'STCP/SUDP/XTCP：需填访问密钥 sk，访问端填 serverName');
+            hint.textContent = isTcpUdp ? tt("TCP/UDP：需填写远程端口", "TCP/UDP: remote port is required")
+                : (isHttp ? tt("HTTP/HTTPS：填子域名或自定义域名（需 frps 配置 vhost 端口）", "HTTP/HTTPS: fill in a subdomain or custom domain (frps needs a configured vhost port)")
+                          : tt("STCP/SUDP/XTCP：需填访问密钥 sk，访问端填 serverName", "STCP/SUDP/XTCP: fill in the secret key (sk); the visitor side uses serverName"));
         }
     }
 
@@ -4093,7 +4765,7 @@ class FRPManagerUI {
         const editing = (idx >= 0 && this._proxies && this._proxies[idx]);
         if (this.proxyEditIndex) this.proxyEditIndex.value = String(editing ? idx : -1);
         const ttl = document.getElementById('proxyFormTitle');
-        if (ttl) ttl.textContent = editing ? ('编辑代理 · ' + (this._proxies[idx].name || '')) : '新增代理';
+        if (ttl) ttl.textContent = editing ? (tt("编辑代理 · ", "Edit proxy · ") + (this._proxies[idx].name || '')) : tt("新增代理", "Add proxy");
         const p = editing ? this._proxies[idx] : null;
         const set = (el, v) => { if (el) el.value = (v == null ? '' : v); };
         set(this.proxyName, p ? p.name : '');
@@ -4150,20 +4822,20 @@ class FRPManagerUI {
     }
     async saveProxy() {
         const name = (this.proxyName && this.proxyName.value || '').trim();
-        if (!name) { this.showMessage('请填写代理名称', 'warning'); return; }
+        if (!name) { this.showMessage(tt('请填写代理名称', 'Enter a proxy name'), 'warning'); return; }
         const ty = ((this.proxyType && this.proxyType.value) || '').toLowerCase();
-        if (!ty) { this.showMessage('请选择代理类型', 'warning'); return; }
+        if (!ty) { this.showMessage(tt('请选择代理类型', 'Select a proxy type'), 'warning'); return; }
         // 去重（编辑自身不算冲突）
         const idx = parseInt(this.proxyEditIndex ? this.proxyEditIndex.value : '-1', 10);
         const dup = (this._proxies || []).findIndex((p, i) => i !== idx && (p.name || '') === name);
-        if (dup >= 0) { this.showMessage('已存在同名代理「' + name + '」', 'warning'); return; }
+        if (dup >= 0) { this.showMessage(tt('已存在同名代理「', 'A proxy named "') + name + '」', 'warning'); return; }
         if (ty === 'tcp' || ty === 'udp') {
             const rp = this.proxyRemotePort ? String(this.proxyRemotePort.value).trim() : '';
-            if (!rp) { this.showMessage('TCP/UDP 代理必须填写「远程端口」', 'warning'); return; }
+            if (!rp) { this.showMessage(tt('TCP/UDP 代理必须填写「远程端口」', 'TCP/UDP proxies require a remote port'), 'warning'); return; }
         }
         if (ty === 'stcp' || ty === 'sudp' || ty === 'xtcp') {
             const sk = this.proxySk ? String(this.proxySk.value).trim() : '';
-            if (!sk) { this.showMessage('STCP/SUDP/XTCP 代理必须填写「访问密钥 sk」', 'warning'); return; }
+            if (!sk) { this.showMessage(tt('STCP/SUDP/XTCP 代理必须填写「访问密钥 sk」', 'STCP/SUDP/XTCP proxies require an access secret (sk)'), 'warning'); return; }
         }
         try {
             const obj = this._collectProxy();
@@ -4178,18 +4850,18 @@ class FRPManagerUI {
                 this._proxies = list;
                 this.renderProxies();
                 this.hideProxyForm();
-                this.showMessage(d.message || '代理已保存', 'success');
+                this.showMessage(d.message || tt("代理已保存", "Proxy saved"), 'success');
                 if (d.format) this._proxyFormat = d.format;
             } else {
-                this.showMessage(d.message || '保存失败', 'error');
+                this.showMessage(d.message || tt('保存失败', 'Save failed'), 'error');
             }
-        } catch (e) { this.showMessage('保存代理失败', 'error'); }
+        } catch (e) { this.showMessage(tt('保存代理失败', 'Failed to save proxy'), 'error'); }
     }
     async deleteProxy(i) {
         const list = (this._proxies || []).slice();
         if (i < 0 || i >= list.length) return;
         const name = list[i].name || ('#' + (i + 1));
-        if (!confirm('确定删除代理「' + name + '」？')) return;
+        if (!confirm(tt("确定删除代理「", "Delete proxy \"") + name + '」？')) return;
         list.splice(i, 1);
         try {
             const resp = await fetch('/api/proxies', {
@@ -4200,11 +4872,11 @@ class FRPManagerUI {
             if (d.success) {
                 this._proxies = list;
                 this.renderProxies();
-                this.showMessage('已删除', 'success');
+                this.showMessage(tt('已删除', 'Deleted'), 'success');
             } else {
-                this.showMessage(d.message || '删除失败', 'error');
+                this.showMessage(d.message || tt('删除失败', 'Delete failed'), 'error');
             }
-        } catch (e) { this.showMessage('删除代理失败', 'error'); }
+        } catch (e) { this.showMessage(tt('删除代理失败', 'Failed to delete proxy'), 'error'); }
     }
 
     showMessage(message, type = 'info') {
@@ -4608,7 +5280,8 @@ document.addEventListener('keydown', (e) => {
         .tb-theme{display:inline-flex; align-items:center; gap:6px; padding:6px 13px; font-size:0.76rem;
             font-family:inherit; border-radius:9px; cursor:pointer; color:var(--txt2);
             background:var(--panel2); border:1px solid var(--line); transition:all .2s; white-space:nowrap}
-        .tb-theme:hover{color:var(--cyan); border-color:var(--line-strong); transform:translateY(-1px)}
+        .tb-theme:hover{color:var(--cyan); border-color:rgba(34,211,238,.5); background:rgba(34,211,238,.1);
+            box-shadow:0 0 14px rgba(34,211,238,.22); transform:translateY(-1px)}
         .tb-theme-ic{font-size:0.94rem; line-height:1}
         .tb-logout{font-size:0.74rem; color:var(--txt3); text-decoration:none; padding:6px 10px;
             border-radius:9px; border:1px solid var(--line); white-space:nowrap}

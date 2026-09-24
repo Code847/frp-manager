@@ -1,0 +1,18 @@
+serverAddr = "127.0.0.1"
+serverPort = 7000
+
+[[proxies]]
+name = "web"
+type = "tcp"
+localIP = "127.0.0.1"
+localPort = 80
+remotePort = 8080
+
+[[proxies]]
+name = "123123"
+type = "stcp"
+sk = "123"
+role = "server"
+serverName = "123"
+bindAddr = ""
+bindPort = "600"

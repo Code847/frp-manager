@@ -45,6 +45,13 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
 @keyframes pl{0%{box-shadow:0 0 0 0 rgba(52,211,153,.5)}70%{box-shadow:0 0 0 8px rgba(52,211,153,0)}100%{box-shadow:0 0 0 0 rgba(52,211,153,0)}}
 .ver{font-family:Consolas,monospace;color:var(--txt3)}
 
+/* 语言切换按钮（与主站视觉一致） */
+.lg-lang{display:flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;cursor:pointer;
+  background:rgba(10,20,38,.5);border:1px solid var(--line);color:var(--txt2);
+  font-family:inherit;font-size:11.5px;backdrop-filter:blur(8px);transition:all .22s}
+.lg-lang:hover{color:var(--accent);border-color:var(--accent);background:rgba(34,211,238,.08)}
+.lg-lang-ic{font-size:13px;line-height:1}
+
 .wrap{flex:1;display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;
   max-width:1240px;width:100%;margin:0 auto;padding:10px 0}
 .intro{max-width:520px}
@@ -224,26 +231,28 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
       </div>
       <div class="brand-text">
         <h1>FRP<span>MANAGER</span></h1>
-        <p>跨平台 FRP 管理控制台</p>
+        <p data-i18n="lg.brand.sub">跨平台 FRP 管理控制台</p>
       </div>
     </div>
     <div class="top-right">
-      <div class="secure"><span class="pulse"></span>本地会话 · 已签名</div>
-      <span class="ver">v1.1</span>
+      <div class="secure"><span class="pulse"></span><span data-i18n="lg.secure">本地会话 · 已签名</span></div>
+      <button id="lgLangToggle" class="lg-lang" type="button" title="切换语言 / Switch language">
+        <span class="lg-lang-ic">🌐</span><span id="lgLangTxt">English</span>
+      </button>
+      <span class="ver">v{{ app_version }}</span>
     </div>
   </header>
 
   <main class="wrap">
     <section class="intro">
       <div class="phase-pill"><span class="p-dot"></span>FRP MANAGER · <b>SECURE ACCESS</b></div>
-      <h2 class="title">内网穿透<br><span id="titleAcc">统一控制台</span></h2>
-      <p class="desc">在一台机器上同时管理 frpc 客户端与 frps 服务端：运行状态、端口映射、
-        服务端 dashboard 指标、二进制版本更新，全部集中在一处。</p>
+      <h2 class="title"><span data-i18n="lg.title1">内网穿透</span><br><span id="titleAcc" data-i18n="lg.title2">统一控制台</span></h2>
+      <p class="desc" data-i18n="lg.desc">在一台机器上同时管理 frpc 客户端与 frps 服务端：运行状态、端口映射、服务端 dashboard 指标、二进制版本更新，全部集中在一处。</p>
       <ul class="feat">
-        <li><i></i>运行状态实时刷新，frpc / frps 双进程独立启停</li>
-        <li><i></i>端口映射与服务端 API 自动识别、一键探测连通性</li>
-        <li><i></i>frpc / frps 版本检测与在线下载替换</li>
-        <li><i></i>账号密码写进配置文件，图形验证码可随时开关</li>
+        <li><i></i><span data-i18n="lg.feat1">运行状态实时刷新，frpc / frps 双进程独立启停</span></li>
+        <li><i></i><span data-i18n="lg.feat2">端口映射与服务端 API 自动识别、一键探测连通性</span></li>
+        <li><i></i><span data-i18n="lg.feat3">frpc / frps 版本检测与在线下载替换</span></li>
+        <li><i></i><span data-i18n="lg.feat4">账号密码写进配置文件，图形验证码可随时开关</span></li>
       </ul>
       <div class="clock-box">
         <div class="cb-left">
@@ -251,9 +260,9 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
           <small id="todayStr">—</small>
         </div>
         <div class="cb-right">
-          <div class="cb-row"><span>今日已过</span><span id="dayPct">0%</span></div>
+          <div class="cb-row"><span data-i18n="lg.today">今日已过</span><span id="dayPct">0%</span></div>
           <div class="day-bar"><u id="dayFill"></u><em id="dayHead"></em></div>
-          <div class="cb-row small"><span id="nextTip">未通过认证时，所有页面与接口都会被拒绝访问</span></div>
+          <div class="cb-row small"><span id="nextTip" data-i18n="lg.nexttip">未通过认证时，所有页面与接口都会被拒绝访问</span></div>
         </div>
       </div>
     </section>
@@ -261,27 +270,27 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
     <section class="card" id="card">
       <div class="card-inner">
         <div class="card-head">
-          <h3>控制台登录</h3>
-          <p>请输入账号与密码{% if captcha_on %} 以及右侧验证码{% endif %}</p>
+          <h3 data-i18n="lg.login.title">控制台登录</h3>
+          <p><span data-i18n="lg.login.hint">请输入账号与密码</span>{% if captcha_on %}<span data-i18n="lg.login.cap"> 以及右侧验证码</span>{% endif %}</p>
         </div>
 
         <form id="loginForm" autocomplete="off">
           <input type="hidden" id="nextUrl" value="{{ next }}">
 
           <label class="field" id="fUser">
-            <span class="fl">账号</span>
+            <span class="fl" data-i18n="lg.user">账号</span>
             <span class="ipt">
               <svg class="ic" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></svg>
-              <input id="user" name="user" placeholder="请输入账号" autocomplete="username" spellcheck="false">
+              <input id="user" name="user" placeholder="请输入账号" data-i18n-ph="lg.user.ph" autocomplete="username" spellcheck="false">
             </span>
             <span class="err" id="errUser"></span>
           </label>
 
           <label class="field" id="fPwd">
-            <span class="fl">密码</span>
+            <span class="fl" data-i18n="lg.pwd">密码</span>
             <span class="ipt">
               <svg class="ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-              <input id="pwd" name="pwd" type="password" placeholder="请输入密码" autocomplete="current-password">
+              <input id="pwd" name="pwd" type="password" placeholder="请输入密码" data-i18n-ph="lg.pwd.ph" autocomplete="current-password">
               <button class="eye" id="eyeBtn" type="button" aria-label="显示密码">
                 <svg class="ic" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>
               </button>
@@ -291,12 +300,12 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
 
           {% if captcha_on %}
           <div class="field captcha-row" id="fCode">
-            <span class="fl">验证码</span>
+            <span class="fl" data-i18n="lg.code">验证码</span>
             <span class="ipt">
               <svg class="ic" viewBox="0 0 24 24"><path d="M4 5h16v14H4z"/><path d="M8 15l2-4 2 2 2-3 2 5"/></svg>
-              <input id="code" name="code" maxlength="4" placeholder="4 位字符" autocomplete="off">
+              <input id="code" name="code" maxlength="4" placeholder="4 位字符" data-i18n-ph="lg.code.ph" autocomplete="off">
               <img id="capImg" src="/api/captcha?t=0" alt="验证码" title="点击换一张">
-              <span id="capSpin">加载中</span>
+              <span id="capSpin" data-i18n="lg.loading">加载中</span>
             </span>
             <span class="err" id="errCode"></span>
           </div>
@@ -305,45 +314,45 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
           <div class="row-between">
             <label class="remember">
               <input type="checkbox" id="remember"><span class="tick"></span>
-              <span>记住此设备 {{ remember_days }} 天</span>
+              <span><span data-i18n="lg.remember">记住此设备</span> {{ remember_days }} <span data-i18n="lg.remember.days">天</span></span>
             </label>
-            <a class="forgot" id="forgot">忘记密码？</a>
+            <a class="forgot" id="forgot" data-i18n="lg.forgot">忘记密码？</a>
           </div>
 
           <button class="submit" id="submitBtn" type="submit">
-            <span class="sb-txt">登 录</span>
-            <span class="sb-load"><i></i>验证中</span>
+            <span class="sb-txt" data-i18n="lg.submit">登 录</span>
+            <span class="sb-load"><i></i><span data-i18n="lg.submitting">验证中</span></span>
             <svg class="sb-arrow" viewBox="0 0 24 24"><path d="M5 12h13M12 5l7 7-7 7"/></svg>
           </button>
         </form>
 
-        <div class="divider">提示</div>
+        <div class="divider" data-i18n="lg.tip">提示</div>
         <div class="sso">
           <button type="button" data-tip="账号密码保存在服务端本地配置文件中，改完立刻生效">
             <svg class="ic" viewBox="0 0 24 24"><path d="M4 4h16v16H4z"/><path d="M8 9h8M8 13h8M8 17h4"/></svg>
-            <span>本地凭证</span>
+            <span data-i18n="lg.sso1">本地凭证</span>
           </button>
           <button type="button" data-tip="captcha = true / false 即可开关图形验证码">
             <svg class="ic" viewBox="0 0 24 24"><path d="M12 3l8 4v6c0 5-3.4 8.6-8 9-4.6-.4-8-4-8-9V7z"/><path d="M9 12l2 2 4-4"/></svg>
-            <span>验证码开关</span>
+            <span data-i18n="lg.sso2">验证码开关</span>
           </button>
           <button type="button" data-tip="enabled = false 可直接关闭整套登录保护">
             <svg class="ic" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M9 10V7a3 3 0 0 1 6 0v3"/></svg>
-            <span>免登录模式</span>
+            <span data-i18n="lg.sso3">免登录模式</span>
           </button>
         </div>
 
         <p class="demo-tip">
-          {% if default_pwd %}<span class="warn">当前仍使用出厂默认口令，登录后请在「配置与下载 → Web 设置」里尽快修改</span>
-          {% else %}会话使用服务端签名 Cookie 保存，勾选「记住此设备」可保留多天{% endif %}
+          {% if default_pwd %}<span class="warn" data-i18n="lg.demo">当前仍使用出厂默认口令，登录后请在「配置与下载 → Web 设置」里尽快修改</span>
+          {% else %}<span data-i18n="lg.demo2">会话使用服务端签名 Cookie 保存，勾选「记住此设备」可保留多天</span>{% endif %}
         </p>
 
         <div class="done" id="done">
           <div class="done-ring">
             <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="26"/><path d="M19 31l8 8 15-16"/></svg>
           </div>
-          <b>登录成功</b>
-          <p id="doneTip">正在进入控制台...</p>
+          <b data-i18n="lg.done">登录成功</b>
+          <p id="doneTip" data-i18n="lg.done.tip">正在进入控制台...</p>
           <div class="done-bar"><u></u></div>
         </div>
       </div>
@@ -351,16 +360,566 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
   </main>
 
   <footer class="bottom">
-    <span>© FRP Manager · 基于 Flask 构建</span>
+    <span data-i18n="lg.footer">© FRP Manager · 基于 Flask 构建</span>
     <div class="b-links">
-      <a data-open="help">忘记密码</a><i>·</i>
-      <a data-open="file">会话说明</a><i>·</i>
-      <a data-open="local">本地访问</a>
+      <a data-open="help" data-i18n="lg.links.forgot">忘记密码</a><i>·</i>
+      <a data-open="file" data-i18n="lg.links.file">会话说明</a><i>·</i>
+      <a data-open="local" data-i18n="lg.links.local">本地访问</a>
     </div>
   </footer>
 </div>
 
 <div class="toast" id="toast"></div>
+
+<script>
+/* ============ 登录页多语言 ============ */
+var LI18N = {
+  zh: {
+    'lg.brand.sub':'跨平台 FRP 管理控制台','lg.secure':'本地会话 · 已签名',
+    'lg.title1':'内网穿透','lg.title2':'统一控制台',
+    'lg.desc':'在一台机器上同时管理 frpc 客户端与 frps 服务端：运行状态、端口映射、服务端 dashboard 指标、二进制版本更新，全部集中在一处。',
+    'lg.feat1':'运行状态实时刷新，frpc / frps 双进程独立启停','lg.feat2':'端口映射与服务端 API 自动识别、一键探测连通性',
+    'lg.feat3':'frpc / frps 版本检测与在线下载替换','lg.feat4':'账号密码写进配置文件，图形验证码可随时开关',
+    'lg.today':'今日已过','lg.nexttip':'未通过认证时，所有页面与接口都会被拒绝访问',
+    'lg.login.title':'控制台登录','lg.login.hint':'请输入账号与密码','lg.login.cap':' 以及右侧验证码',
+    'lg.user':'账号','lg.user.ph':'请输入账号','lg.pwd':'密码','lg.pwd.ph':'请输入密码',
+    'lg.code':'验证码','lg.code.ph':'4 位字符','lg.loading':'加载中','lg.capfail':'获取失败',
+    'lg.remember':'记住此设备','lg.remember.days':' 天','lg.forgot':'忘记密码？',
+    'lg.submit':'登 录','lg.submitting':'验证中','lg.tip':'提示',
+    'lg.sso1':'本地凭证','lg.sso2':'验证码开关','lg.sso3':'免登录模式',
+    'lg.demo':'当前仍使用出厂默认口令，登录后请在「配置与下载 → Web 设置」里尽快修改',
+    'lg.demo2':'会话使用服务端签名 Cookie 保存，勾选「记住此设备」可保留多天',
+    'lg.done':'登录成功','lg.done.tip':'正在进入控制台...','lg.footer':'© FRP Manager · 基于 Flask 构建',
+    'lg.links.forgot':'忘记密码','lg.links.file':'会话说明','lg.links.local':'本地访问',
+    'lang.zh':'中文','lang.en':'English',
+    'lg.err.user':'请输入账号','lg.err.pwd':'请输入密码','lg.err.code':'请输入 4 位验证码',
+    'lg.fail':'登录失败','lg.neterr':'网络异常：','lg.expired':'会话已过期，请重新登录',
+    'lg.remember.on':'已勾选，本次登录会保留 ','lg.remember.off':'已取消，关闭浏览器即失效',
+    'lg.pwadmin':'密码保存在服务端本地配置文件里，需由管理员修改',
+    'lg.help':'忘记密码请联系管理员修改服务端认证配置',
+    'lg.file.tip':'会话使用签名 Cookie，勾选「记住此设备」可保留多天',
+    'lg.local.tip':'本机直接访问 http://127.0.0.1 对应的 Web 端口即可',
+    'lg.sso1.tip':'账号密码保存在服务端本地配置文件中，改完立刻生效',
+    'lg.sso2.tip':'captcha = true / false 即可开关图形验证码',
+    'lg.sso3.tip':'enabled = false 可直接关闭整套登录保护'
+  },
+  en: {
+    'lg.brand.sub':'Cross-platform FRP management console','lg.secure':'Local session · signed',
+    'lg.title1':'Intranet tunneling','lg.title2':'Unified console',
+    'lg.desc':'Manage frpc client and frps server on one machine: status, port mapping, server dashboard metrics and binary updates — all in one place.',
+    'lg.feat1':'Live status refresh; frpc / frps run and stop independently','lg.feat2':'Auto-detect port mapping & server API, one-click connectivity test',
+    'lg.feat3':'frpc / frps version check and online download swap','lg.feat4':'Credentials in config file; captcha toggle anytime',
+    'lg.today':'Today elapsed','lg.nexttip':'Until authenticated, all pages and APIs are denied',
+    'lg.login.title':'Console Login','lg.login.hint':'Enter your account and password','lg.login.cap':' plus the captcha on the right',
+    'lg.user':'Account','lg.user.ph':'Enter account','lg.pwd':'Password','lg.pwd.ph':'Enter password',
+    'lg.code':'Captcha','lg.code.ph':'4 characters','lg.loading':'Loading','lg.capfail':'Failed',
+    'lg.remember':'Remember this device for','lg.remember.days':' days','lg.forgot':'Forgot password?',
+    'lg.submit':'LOGIN','lg.submitting':'Verifying','lg.tip':'Tips',
+    'lg.sso1':'Local creds','lg.sso2':'Captcha toggle','lg.sso3':'Passwordless',
+    'lg.demo':'Default factory password in use — change it in Config & Download → Web Settings after login',
+    'lg.demo2':'Session saved via signed server Cookie; check "Remember this device" to keep for days',
+    'lg.done':'Login success','lg.done.tip':'Entering console...','lg.footer':'© FRP Manager · Built with Flask',
+    'lg.links.forgot':'Forgot password','lg.links.file':'Session info','lg.links.local':'Local access',
+    'lang.zh':'中文','lang.en':'English',
+    'lg.err.user':'Enter account','lg.err.pwd':'Enter password','lg.err.code':'Enter 4-char captcha',
+    'lg.fail':'Login failed','lg.neterr':'Network error: ','lg.expired':'Session expired, please log in again',
+    'lg.remember.on':'Checked — this login will be kept for ','lg.remember.off':'Cancelled — expires when browser closes',
+    'lg.pwadmin':'Password is in the server local config file; ask admin to change it',
+    'lg.help':'Forgot password? Ask admin to change server auth config',
+    'lg.file.tip':'Session uses a signed Cookie; check "Remember this device" to keep for days',
+    'lg.local.tip':'On this machine, just open the Web port at http://127.0.0.1',
+    'lg.sso1.tip':'Credentials stored in server local config; takes effect immediately',
+    'lg.sso2.tip':'Set captcha = true / false to toggle the graphic captcha',
+    'lg.sso3.tip':'Set enabled = false to disable the whole login protection'
+  }
+};
+var LCURRENT = 'zh';
+function lt(key){ var d = LI18N[LCURRENT] || LI18N.zh; if (Object.prototype.hasOwnProperty.call(d,key)) return d[key]; if (LI18N.zh[key]!=null) return LI18N.zh[key]; return key; }
+function ltt(zh, en){ return LCURRENT === 'en' ? (en==null?zh:en) : zh; }
+var tt = ltt;
+
+// ========== 静态文案运行时翻译（无 data-i18n 的固定文本） ==========
+var ZH_EN_STATIC = {
+    "FRP Manager - 跨平台版": "FRP Manager - Cross-platform",
+    "跨平台版 v{{ app_version }} · Flask": "Cross-platform v{{ app_version }} · Flask",
+    "控制中心": "Control Center",
+    "客户端 (frpc)": "Client (frpc)",
+    "服务端 (frps)": "Server (frps)",
+    "客户端与服务端可同时运行、互不影响；先选上方目标，再执行操作。": "Client and server can run at the same time independently. Pick a target above, then run an action.",
+    "系统: {{ system_info }}": "System: {{ system_info }}",
+    "目标: {{ arch_info }}": "Target: {{ arch_info }}",
+    "实时": "Live",
+    "已登录": "Signed in",
+    "主题": "Theme",
+    "退出登录": "Sign out",
+    "客户端 frpc": "Client frpc",
+    "服务端 frps": "Server frps",
+    "Web UI 运行中": "Web UI running",
+    "检查中...": "Checking...",
+    "开启后，若 frpc / frps 在「期望运行」状态下意外退出，守护线程会自动拉起；\r\r\n                    连续崩溃超过上限则停止自启并告警，防止雪崩。开关与阈值在「系统设置 → 守护与告警」中调整。": "Once enabled, if frpc / frps exits unexpectedly while expected to be running, the watchdog restarts it automatically; after too many consecutive crashes it stops auto-starting and raises an alert to avoid a crash loop. The toggle and threshold live in \"System -> Watchdog & Alerts\".",
+    "frpc 客户端": "frpc client",
+    "frps 服务端": "frps server",
+    "客户端代理": "Client proxies",
+    "服务端端口": "Server ports",
+    "客户端 (frpc) 代理端口": "Client (frpc) proxy ports",
+    "加载中...": "Loading...",
+    "服务端 (frps) 端口": "Server (frps) ports",
+    "刷新连接信息": "Refresh connection info",
+    "当服务端(frps)已启动且启用管理 API 时，此处实时展示连接信息；未启用则下方显示配置指引。": "When frps is running with the management API enabled, live connection info is shown here; otherwise a configuration guide is displayed below.",
+    "连接信息": "Connection info",
+    "服务端配置文件": "Server config file",
+    "面板地址": "Dashboard address",
+    "打开": "Open",
+    "重置": "Reset",
+    "后端探测": "Backend probe",
+    "监听地址": "Listen address",
+    "鉴权方式": "Auth method",
+    "连接状态": "Connection status",
+    "未检测": "Not tested",
+    "「面板地址」给": "\"Dashboard address\" is what ",
+    "浏览器 / 外部程序": "browsers / external programs",
+    "用（默认取你访问本页面的 IP，可改并记住）；\r\r\n                        「后端探测」是本程序代发请求用的地址（frps 的面板不带 CORS 头，浏览器无法直连）。两者不同属正常。": " use (defaults to the IP you are visiting this page with; editable and remembered). \"Backend probe\" is the address this program sends requests from (the frps dashboard sends no CORS headers, so browsers cannot call it directly). It is normal for the two to differ.",
+    "Basic Auth 鉴权凭证": "Basic Auth credentials",
+    "改完需重启 frps": "Restart frps after changing",
+    "用户名": "Username",
+    "密码": "Password",
+    "显示": "Show",
+    "保存并写入配置": "Save and write to config",
+    "复制 curl": "Copy curl",
+    "保存会直接改写": "Saving rewrites ",
+    "（ini 写": "(for ini it writes ",
+    "，\r\r\n                        toml 写": ", for toml it writes ",
+    "），并自动备份一份；\r\r\n                        改完必须": "), and backs up a copy; you must ",
+    "重启 frps": "restart frps",
+    "才会生效。": " for it to take effect.",
+    "接口与连通性检测": "API & connectivity checks",
+    "复制": "Copy",
+    "检测 API 连接": "Test API connection",
+    "覆盖地址": "Override address",
+    "端口": "Port",
+    "一键修复配置": "Fix config",
+    "管理 API 要怎么配置才生效？（ini 与 toml 的写法区别）": "How should the management API be configured to work? (ini vs toml differences)",
+    "推荐（TOML，文件名以 .toml 结尾）": "Recommended (TOML, file name ends with .toml)",
+    "bindPort = 7000\r\r\nauth.token = \"改成更复杂的\"\r\r\n\r\r\nwebServer.addr = \"0.0.0.0\"\r\r\nwebServer.port = 7500\r\r\nwebServer.user = \"admin\"\r\r\nwebServer.password = \"改成更复杂的\"": "bindPort = 7000\nauth.token = \"change-me-to-something-stronger\"\n\nwebServer.addr = \"0.0.0.0\"\nwebServer.port = 7500\nwebServer.user = \"admin\"\nwebServer.password = \"change-me-to-something-stronger\"",
+    "或者（INI，文件名以 .ini 结尾）——必须写旧字段名": "Or (INI, file name ends with .ini) - you must use the old field names",
+    "[common]\r\r\nbind_port = 7000\r\r\ntoken = 改成更复杂的\r\r\n\r\r\ndashboard_addr = 0.0.0.0\r\r\ndashboard_port = 7500\r\r\ndashboard_user = admin\r\r\ndashboard_pwd = 改成更复杂的": "[common]\nbind_port = 7000\ntoken = change-me-to-something-stronger\n\ndashboard_addr = 0.0.0.0\ndashboard_port = 7500\ndashboard_user = admin\ndashboard_pwd = change-me-to-something-stronger",
+    "坑": "Pitfall",
+    "：ini 格式里写": ": writing ",
+    "段，frp 会": " in an ini file makes frp ",
+    "直接忽略": "ignore it completely",
+    "，\r\r\n                        frps 能起来但 7500 不会监听 —— 就是「连接被拒绝」的典型原因。点上方黄色「一键修复配置」可自动转换。": ", so frps starts but never listens on 7500 - the classic \"connection refused\" cause. Click the yellow \"Fix config\" button above to convert it automatically.",
+    "实时连接": "Live connections",
+    "frps 运行中 · 管理API已启用": "frps running · management API enabled",
+    "代理总数": "Total proxies",
+    "代理名": "Proxy",
+    "状态": "Status",
+    "客户端版本": "Client version",
+    "请启动 frps 并启用管理 API": "Start frps with the management API enabled",
+    "内存 · frpc": "Memory · frpc",
+    "内存 · frps": "Memory · frps",
+    "下载 / 更新 FRP": "Download / update FRP",
+    "检查更新": "Check for updates",
+    "下载镜像（国内代理）:": "Download mirror (China proxy):",
+    "自动（官方 + 国内镜像回退）": "Auto (official, falling back to China mirrors)",
+    "ghfast.top 国内代理": "ghfast.top China proxy",
+    "gh-proxy.com 国内代理": "gh-proxy.com China proxy",
+    "ghproxy.net 国内代理": "ghproxy.net China proxy",
+    "mirror.ghproxy.com 国内代理": "mirror.ghproxy.com China proxy",
+    "仅官方 GitHub（不使用代理）": "Official GitHub only (no proxy)",
+    "准备中": "Preparing",
+    "frpc（客户端）": "frpc (client)",
+    "frps（服务端）": "frps (server)",
+    "当前平台": "Current platform",
+    "· 二进制目录": "· binary directory",
+    "· 版本归档": "· archived versions",
+    "版本切换": "Version switch",
+    "frpc（客户端）可用版本:": "frpc (client) available versions:",
+    "扫描中…": "Scanning...",
+    "frps（服务端）可用版本:": "frps (server) available versions:",
+    "切换到所选版本": "Switch to selected version",
+    "重新扫描本地版本": "Rescan local versions",
+    "选择要切换的版本后点「切换到所选版本」。 frpc / frps 可分别指定不同版本。": "Pick a version, then click \"Switch to selected version\". frpc and frps can use different versions.",
+    "版本来源：": "Version sources: ",
+    "当前生效文件、": "currently active files, ",
+    "归档、\r\r\n                    以及": "archives, and ",
+    "temp/frp_&lt;版本&gt;_&lt;平台&gt;/": "temp/frp_&lt;version&gt;_&lt;platform&gt;/",
+    "里解压出来的官方包。": " unpacked from official packages.",
+    "切换时会自动把原版本归档进": "When switching, the previous version is archived into ",
+    "，随时可以切回去。": ", so you can switch back anytime.",
+    "正在运行的 frpc/frps 会占用文件，请先停止再切换。": "A running frpc/frps locks these files; stop it before switching.",
+    "手动补充版本：把二进制按": "Add versions manually: name the binaries ",
+    "frpc_&lt;平台&gt;_&lt;版本&gt;": "frpc_&lt;platform&gt;_&lt;version&gt; /",
+    "frps_&lt;平台&gt;_&lt;版本&gt;": "frps_&lt;platform&gt;_&lt;version&gt;",
+    "命名放进": " and put them in ",
+    "，\r\r\n                    点「重新扫描本地版本」即可出现在下拉里。": ", then click \"Rescan local versions\" to see them in the list.",
+    "离线导入": "Offline import",
+    "支持 .zip / .tar.gz": "Supports .zip / .tar.gz",
+    "内网 / 无外网环境：先从能上网的机器下载官方 frp 发布包（含 frpc / frps 二进制），传到本机后在此上传，自动解压并安装到 bin/。": "For intranet / offline machines: download the official frp release (including the frpc / frps binaries) on a machine with internet access, copy it over and upload it here; it is unpacked and installed into bin/ automatically.",
+    "选择发布包:": "Select release package:",
+    "上传并安装": "Upload and install",
+    "Web端口:": "Web port:",
+    "保存端口": "Save port",
+    "修改端口后需重启应用生效": "Restart the app for the new port to take effect",
+    "开机启动": "Startup",
+    "在各环境下把本程序注册为开机自启（Windows 注册表 / Linux systemd / macOS launchd）。\r\r\n                    勾选后本次立即生效，下次开机自动拉起面板；下方两项则在本程序每次启动时自动拉起对应的 frp。\r\r\n                    注意：请先完成 frpc / frps 的配置，再勾选「随程序启动」——未配置时即使勾选也会自动跳过，避免启动报错。": "Register this program to start automatically on each platform (Windows registry / Linux systemd / macOS launchd). When checked it takes effect immediately and the panel comes up with the system; the two options below start the corresponding frp every time this program starts. Note: configure frpc / frps first, then enable \"start with program\" - unconfigured ones are skipped automatically to avoid startup errors.",
+    "开机自动启动本程序": "Start this program on boot",
+    "随程序启动 FRPC 客户端": "Start FRPC client with the program",
+    "随程序启动 FRPS 服务端": "Start FRPS server with the program",
+    "等网络就绪后再拉起": "Wait until the network is ready",
+    "系统级需管理员权限": "System level requires administrator rights",
+    "保存开机启动设置": "Save startup settings",
+    "重新读取": "Reload",
+    "登录认证": "Login authentication",
+    "账号密码与图形验证码开关统一保存在上面的配置文件里，改完立即生效（改密码会让当前会话立刻失效）。\r\r\n                    忘记了可以直接编辑该文件：": "Credentials and the captcha toggle are stored in the config file above and take effect immediately (changing the password invalidates the current session).\n If you forget them, edit that file directly:",
+    "启用登录保护:": "Enable login protection:",
+    "访问面板前必须登录": "Require sign-in before opening the panel",
+    "图形验证码开关:": "Image captcha:",
+    "登录时额外输入 4 位图形验证码": "Require a 4-character captcha at sign-in",
+    "登录账号:": "Username:",
+    "新密码（留空=不修改）:": "New password (blank = unchanged):",
+    "会话有效期（分钟，0=跟随浏览器）:": "Session lifetime (minutes, 0 = follow browser):",
+    "记住此设备（天）:": "Remember this device (days):",
+    "保存认证设置": "Save auth settings",
+    "退出重新登录": "Sign out and sign in again",
+    "进程自愈守护与掉线告警推送的开关统一在此设置；「运行状态 → 进程自愈守护」可查看实时情况。": "The watchdog and disconnect-alert toggles are set here; see \"Status -> Self-healing watchdog\" for live details.",
+    "开启后，若 frpc / frps 在「期望运行」状态下意外退出，守护线程每 5 秒检测并自动拉起；连续崩溃超过上限则停止自启并告警，防止雪崩。": "Once enabled, if frpc / frps exits unexpectedly while expected to be running, the watchdog checks every 5 seconds and restarts it; after too many consecutive crashes it stops auto-starting and raises an alert to avoid a crash loop.",
+    "启用进程自愈守护": "Enable self-healing watchdog",
+    "连崩上限（超过则停止自启）:": "Crash limit (auto-start stops beyond this):",
+    "保存自愈设置": "Save watchdog settings",
+    "定时重启": "Scheduled restart",
+    "按固定间隔（小时）或每天指定时刻自动重启勾选的 frpc / frps，适合需要定期刷新连接、回收资源的场景；仅重启「正在运行或已登记自愈」的进程，不会擅自拉起未运行的 frp。": "Automatically restart the selected frpc / frps on a fixed interval (hours) or at a fixed daily time - useful for refreshing connections and reclaiming resources periodically. Only processes that are running or registered for self-healing are restarted; stopped frp processes are never started by this feature.",
+    "启用定时重启": "Enable scheduled restart",
+    "触发方式:": "Trigger:",
+    "按间隔（每 N 小时）": "Interval (every N hours)",
+    "每天固定时刻": "Daily at a fixed time",
+    "重启间隔（小时，1–720）:": "Restart interval (hours, 1-720):",
+    "每天重启时刻（触发方式选「每天」时生效）:": "Daily restart time (used when the trigger is \"Daily\"):",
+    "重启 FRPC 客户端": "Restart FRPC client",
+    "重启 FRPS 服务端": "Restart FRPS server",
+    "保存定时重启设置": "Save scheduled restart settings",
+    "掉线告警推送": "Disconnect alerts",
+    "frpc / frps 掉线、自愈失败或启动失败时，通过 Webhook（钉钉 / 飞书 / 企业微信）或邮件通知你。": "Get notified via webhook (DingTalk / Feishu / WeCom) or email when frpc / frps goes offline, self-healing fails or a start fails.",
+    "启用掉线告警": "Enable disconnect alerts",
+    "告警方式:": "Alert channel:",
+    "钉钉 (DingTalk)": "DingTalk",
+    "飞书 (Feishu)": "Feishu",
+    "企业微信 (WeCom)": "WeCom",
+    "邮件 (SMTP)": "Email (SMTP)",
+    "Webhook 地址（钉钉/飞书/企业微信机器人）:": "Webhook URL (DingTalk / Feishu / WeCom bot):",
+    "FRP 掉线时通知": "Notify when FRP goes offline",
+    "自愈失败时通知": "Notify when self-healing fails",
+    "启动失败时通知": "Notify when a start fails",
+    "邮件告警设置（方式选「邮件」时生效）": "Email alert settings (used when the channel is Email)",
+    "SMTP 服务器:": "SMTP server:",
+    "SMTP 端口:": "SMTP port:",
+    "发件账号:": "Sender account:",
+    "发件密码/授权码:": "Sender password / app code:",
+    "收件人:": "Recipient:",
+    "保存告警设置": "Save alert settings",
+    "发送测试告警": "Send test alert",
+    "配置类型:": "Config type:",
+    "加载配置": "Load config",
+    "保存配置": "Save config",
+    "frps 的实时连接信息已统一放在顶部「服务端连接信息」区块，此处不再重复显示。": "Live frps connection info now lives in the \"Server connection info\" section at the top and is not repeated here.",
+    "服务端地址:": "Server address:",
+    "服务端端口:": "Server port:",
+    "认证Token:": "Auth token:",
+    "代理配置": "Proxy configuration",
+    "代理 #1": "Proxy #1",
+    "代理名称:": "Proxy name:",
+    "代理类型:": "Proxy type:",
+    "本地IP:": "Local IP:",
+    "本地端口:": "Local port:",
+    "远程端口:": "Remote port:",
+    "自定义域名:": "Custom domain:",
+    "启用TLS": "Enable TLS",
+    "STCP加密": "Encrypt STCP",
+    "+ 添加代理": "+ Add proxy",
+    "生成配置": "Generate config",
+    "复制配置": "Copy config",
+    "生成的配置:": "Generated config:",
+    "共": "Total ",
+    "条代理": " proxies",
+    "server（被访问端）": "server (accessed side)",
+    "visitor（访问端）": "visitor (accessing side)",
+    "立即扫描": "Scan now",
+    "检查 frps / frpc 配置中的安全风险：管理面板是否暴露公网、是否设置鉴权 token、server_addr 是否误填 0.0.0.0 等。": "Checks the frps / frpc config for security risks: is the dashboard exposed to the internet, is an auth token set, is server_addr wrongly set to 0.0.0.0, and so on.",
+    "点击「立即扫描」开始": "Click \"Scan now\" to start",
+    "全部": "All",
+    "面板 HTTP 链接": "Panel HTTP link",
+    "显示200行": "Show 200 lines",
+    "显示500行": "Show 500 lines",
+    "显示1000行": "Show 1000 lines",
+    "显示全部": "Show all",
+    "自动滚动": "Auto scroll",
+    "清空日志": "Clear logs",
+    "选择日志文件": "Select log file",
+    "每行前缀": "Line prefix",
+    "[面板]": "[Panel]",
+    "标明来源；选「全部」时按时间戳归并成一条时间线。": " marks the source; with \"All\" selected, entries are merged into a single timeline by timestamp.",
+    "是本程序自己的记录（启停操作、HTTP 链接可达性检测），与 frp 进程的输出区分开。\r\r\n                    日志目录": " marks this program's own records (start/stop actions, HTTP link reachability checks), separating them from frp process output.\n                    Log directory",
+    "· 当前文件": "· current file",
+    "frps 服务端（蓝）": "frps server (blue)",
+    "frpc 客户端（黄）": "frpc client (yellow)",
+    "面板 HTTP 链接（紫）": "Panel HTTP link (purple)",
+    "未识别来源（灰）": "Unknown source (gray)",
+    "全部结果": "All results",
+    "仅成功": "Success only",
+    "仅失败": "Failures only",
+    "最近 200 条": "Last 200",
+    "最近 500 条": "Last 500",
+    "最近 1000 条": "Last 1000",
+    "最近 2000 条": "Last 2000",
+    "导出": "Export",
+    "记录所有关键操作（启动 / 停止 / 重启 / 配置保存 / 离线导入 / 设置变更）及来源 IP，保存在": "Records every key operation (start / stop / restart / config save / offline import / settings change) with the source IP, stored in ",
+    "。\r\r\n                    本页独立成页、按需加载，不再拖慢其它页面。": ". This page loads on demand and no longer slows down other pages.",
+    "当前显示条数": "Shown",
+    "其中失败": "Failures",
+    "最近一条时间": "Latest entry",
+    "· 基于": " · Built with ",
+    "构建 · 跨平台 FRP 管理控制台": " · Cross-platform FRP management console",
+    "作者": "Author",
+    "代号847": "Code847",
+    "GitHub 项目": "GitHub project",
+    "问题反馈": "Report an issue",
+    "选择操作目标": "Select target",
+    "菜单": "Menu",
+    "Web UI 实时运行中": "Web UI running",
+    "切换深浅色主题": "Toggle light/dark theme",
+    "切换语言 / Switch language": "Switch language",
+    "http://IP:端口": "http://IP:port",
+    "如 admin": "e.g. admin",
+    "留空 = 不修改": "blank = unchanged",
+    "显示/隐藏": "Show/Hide",
+    "留空=用配置值": "blank = use the value from config",
+    "改成更复杂的": "change-me-to-something-stronger",
+    "frpc 可用版本": "Available frpc versions",
+    "frps 可用版本": "Available frps versions",
+    "留空则不修改": "leave blank to keep unchanged",
+    "配置类型": "Config type",
+    "配置内容将显示在这里...": "Config content will appear here...",
+    "快照配置类型": "Snapshot config type",
+    "如: 114.132.239.35": "e.g. 114.132.239.35",
+    "如: 7000": "e.g. 7000",
+    "与服务端token保持一致": "must match the server token",
+    "如: web": "e.g. web",
+    "如: 127.0.0.1": "e.g. 127.0.0.1",
+    "如: 18789": "e.g. 18789",
+    "如: web.example.com": "e.g. web.example.com",
+    "生成的配置将显示在这里...": "Generated config will appear here...",
+    "如 ssh / web": "e.g. ssh / web",
+    "仅 http/https": "http/https only",
+    "逗号分隔": "comma separated",
+    "http 路径": "http path",
+    "如 static_file": "e.g. static_file",
+    "点击「生成 Token」": "Click \"Generate token\"",
+    "如: secret_ssh": "e.g. secret_ssh",
+    "两端必须一致": "must match on both sides",
+    "visitor 需填 server 端名称": "the visitor must use the server name",
+    "如: 6000": "e.g. 6000",
+    "关键字过滤：start / config / 失败 / IP": "Keyword filter: start / config / fail / IP",
+    "按执行结果筛选": "Filter by result",
+    "显示条数": "Entries",
+    "FRP Manager · 登录": "FRP Manager · Sign in",
+    "跨平台 FRP 管理控制台": "Cross-platform FRP management console",
+    "本地会话 · 已签名": "Local session · signed",
+    "内网穿透": "Reverse proxy",
+    "统一控制台": "Unified console",
+    "在一台机器上同时管理 frpc 客户端与 frps 服务端：运行状态、端口映射、服务端 dashboard 指标、二进制版本更新，全部集中在一处。": "Manage frpc clients and frps servers on one machine: runtime status, port mappings, server dashboard metrics and binary version updates - all in one place.",
+    "运行状态实时刷新，frpc / frps 双进程独立启停": "Live status refresh, with independent start/stop for frpc and frps",
+    "端口映射与服务端 API 自动识别、一键探测连通性": "Automatic port-mapping and server API detection with one-click connectivity tests",
+    "frpc / frps 版本检测与在线下载替换": "Version detection and online download/upgrade for frpc and frps",
+    "账号密码写进配置文件，图形验证码可随时开关": "Credentials stored in the config file, captcha toggleable at any time",
+    "今日已过": "elapsed today",
+    "未通过认证时，所有页面与接口都会被拒绝访问": "Without authentication, all pages and APIs are refused",
+    "控制台登录": "Console sign-in",
+    "请输入账号与密码": "Enter your username and password",
+    "以及右侧验证码": " plus the code on the right",
+    "账号": "Username",
+    "验证码": "Captcha",
+    "加载中": "Loading",
+    "记住此设备": "Remember this device",
+    "天": " days",
+    "忘记密码？": "Forgot password?",
+    "登 录": "Sign in",
+    "验证中": "Verifying",
+    "提示": "Tip",
+    "本地凭证": "Local credentials",
+    "验证码开关": "Captcha toggle",
+    "免登录模式": "No-login mode",
+    "当前仍使用出厂默认口令，登录后请在「配置与下载 → Web 设置」里尽快修改": "The factory default password is still in use - change it soon under \"Config & Download -> Web settings\"",
+    "会话使用服务端签名 Cookie 保存，勾选「记住此设备」可保留多天": "Sessions use server-signed cookies; enable \"Remember this device\" to stay signed in for days",
+    "登录成功": "Signed in",
+    "正在进入控制台...": "Entering the console...",
+    "© FRP Manager · 基于 Flask 构建": "© FRP Manager · Built with Flask",
+    "忘记密码": "Forgot password",
+    "会话说明": "About sessions",
+    "本地访问": "Local access",
+    "请输入账号": "Enter your username",
+    "请输入密码": "Enter your password",
+    "显示密码": "Show password",
+    "4 位字符": "4 characters",
+    "点击换一张": "Click to refresh",
+    "账号密码保存在服务端本地配置文件中，改完立刻生效": "Credentials are stored in the server-side config file; changes take effect immediately",
+    "captcha = true / false 即可开关图形验证码": "Set captcha = true / false to toggle the image captcha",
+    "enabled = false 可直接关闭整套登录保护\r\n": "Set enabled = false to turn off login protection entirely",
+    "frpc_<平台>_<版本>": "frpc_<platform>_<version>",
+    "frps_<平台>_<版本>": "frps_<platform>_<version>",
+    "temp/frp_<版本>_<平台>/": "temp/frp_<version>_<platform>/",
+    "点击切换为深色主题": "Switch to dark theme",
+    "点击切换为浅色主题": "Switch to light theme",
+    "浅色": "Light",
+    "深色": "Dark",
+    "未运行": "Idle",
+    "运行中": "Running",
+    "已停止": "Stopped",
+    "检测异常": "Check failed",
+    "通过 Web UI 启动": "Started from the Web UI",
+    "NAS 管理界面（5000/5001）穿透": "NAS admin UI (5000/5001) tunneling",
+    "SSH 远程": "SSH remote",
+    "Web 站点（http）": "Web site (http)",
+    "Web 站点（https）": "Web site (https)",
+    "远程桌面 RDP": "Remote Desktop RDP",
+    "游戏联机（UDP）": "Game multiplayer (UDP)",
+    "群晖 / 威联通": "Synology / QNAP",
+    "本机 IP": "Local IP",
+    "把本机 22 端口映射出去，远程用 ssh 连接": "Map local port 22 for remote ssh access",
+    "把本机 Web 服务通过子域名暴露到公网": "Expose a local web service publicly via a subdomain",
+    "复用已有证书暴露 https 站点": "Expose an https site reusing an existing certificate",
+    "Windows 远程桌面 3389": "Windows Remote Desktop 3389",
+    "把本机 UDP 端口映射出去用于联机": "Map a local UDP port for multiplayer",
+    "被穿透服务所在的本机地址，同机填 127.0.0.1": "Local address of the service; use 127.0.0.1 on the same machine",
+    "本机服务监听端口，如 80 / 5000 / 3389": "Local listening port, e.g. 80 / 5000 / 3389",
+    "服务端对外开放的端口，需已在防火墙放行": "Port exposed by the server; must be allowed by the firewall",
+    "仅 http/https 需要，服务端须已配置 subdomain_host": "Only needed for http/https; the server needs subdomain_host configured",
+};
+var ZH_EN_DICT = (function () {
+  var m = {}; var zh = LI18N.zh || {}, en = LI18N.en || {};
+  for (var k in zh) { if (en[k] && zh[k] && zh[k] !== en[k]) m[zh[k]] = en[k]; }
+  return m;
+})();
+var ZH_EN_NORM = (function () {
+  // 规范化索引：抹掉所有空白后再匹配，避免缩进/换行导致查表失败
+  var m = {};
+  var add = function (src) {
+    for (var k in src) {
+      if (!Object.prototype.hasOwnProperty.call(src, k)) continue;
+      var nk = k.replace(/\s+/g, '');
+      if (nk && !Object.prototype.hasOwnProperty.call(m, nk)) m[nk] = src[k];
+    }
+  };
+  add(ZH_EN_STATIC); add(ZH_EN_DICT);
+  return m;
+})();
+
+function zhEnOne(core) {
+  if (Object.prototype.hasOwnProperty.call(ZH_EN_STATIC, core)) return ZH_EN_STATIC[core];
+  if (Object.prototype.hasOwnProperty.call(ZH_EN_DICT, core)) return ZH_EN_DICT[core];
+  var nk = core.replace(/\s+/g, '');
+  if (nk && Object.prototype.hasOwnProperty.call(ZH_EN_NORM, nk)) return ZH_EN_NORM[nk];
+  return null;
+}
+
+function zhEnText(v) {
+  if (v == null) return null;
+  var core = v.trim();
+  if (!core) return null;
+  var one = zhEnOne(core);
+  if (one != null) return v.replace(core, one);
+  // 多行文本节点逐行翻译，保留换行缩进
+  if (/[\r\n]/.test(v)) {
+    var any = false;
+    var out = v.split(/(\r?\n)/).map(function (seg) {
+      if (/^\r?\n$/.test(seg)) return seg;
+      var c = seg.trim();
+      if (!c) return seg;
+      var t = zhEnOne(c);
+      if (t == null) return seg;
+      any = true;
+      return seg.replace(c, t);
+    }).join('');
+    return any ? out : null;
+  }
+  return null;
+}
+var _lgNodes = [], _lgAttrs = [], _lgTitle = document.title;
+function applyDomLangLogin() {
+  var en = LCURRENT === 'en';
+  _lgNodes = _lgNodes.filter(function (r) { return r.node && r.node.isConnected; });
+  _lgNodes.forEach(function (r) {
+    var cur = r.node.nodeValue;
+    if (en && cur === r.zh) r.node.nodeValue = r.en;
+    else if (!en && cur === r.en) r.node.nodeValue = r.zh;
+  });
+  _lgAttrs = _lgAttrs.filter(function (r) { return r.el && r.el.isConnected; });
+  _lgAttrs.forEach(function (r) {
+    var cur = r.el.getAttribute(r.attr);
+    if (en && cur === r.zh) r.el.setAttribute(r.attr, r.en);
+    else if (!en && cur === r.en) r.el.setAttribute(r.attr, r.zh);
+  });
+  if (en) { var t = zhEnText(_lgTitle); if (t) document.title = t; } else { document.title = _lgTitle; }
+  if (!en) return;
+  var walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, null);
+  var texts = [];
+  while (walker.nextNode()) {
+    var n = walker.currentNode, v = n.nodeValue;
+    if (!v || !/[\u4e00-\u9fff]/.test(v)) continue;
+    var pe = n.parentElement;
+    if (!pe || /^(SCRIPT|STYLE|TEXTAREA)$/.test(pe.tagName)) continue;
+    // 已由 data-i18n 字典翻译成功的节点，不要再用静态表覆盖（字典译文通常更准）
+    var di = pe.closest ? pe.closest('[data-i18n]') : null;
+    if (di && !/[\u4e00-\u9fff]/.test(di.textContent || '')) continue;
+    texts.push(n);
+  }
+  texts.forEach(function (n) {
+    var t = zhEnText(n.nodeValue);
+    if (t == null || t === n.nodeValue) return;
+    _lgNodes.push({ node: n, zh: n.nodeValue, en: t });
+    n.nodeValue = t;
+  });
+  document.querySelectorAll('[placeholder],[title],[aria-label],input[type="button"],input[type="submit"]').forEach(function (el) {
+    ['placeholder', 'title', 'aria-label', 'value'].forEach(function (attr) {
+      if (!el.hasAttribute(attr)) return;
+      if (attr === 'value' && !(el.tagName === 'INPUT' && (el.type === 'button' || el.type === 'submit'))) return;
+      var v = el.getAttribute(attr), t = zhEnText(v);
+      if (t == null || t === v) return;
+      _lgAttrs.push({ el: el, attr: attr, zh: v, en: t });
+      el.setAttribute(attr, t);
+    });
+  });
+}
+   // 与主站同名，便于统一写法
+function applyLangLogin(){
+  try { document.documentElement.setAttribute('lang', LCURRENT==='en'?'en':'zh'); } catch(e){}
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n'); var tx = lt(k);
+    if (tx != null && tx !== k) el.textContent = tx;
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach(function(el){
+    var k = el.getAttribute('data-i18n-ph'); var tx = lt(k);
+    if (tx != null && tx !== k) el.setAttribute('placeholder', tx);
+  });
+  var t = document.getElementById('lgLangTxt');
+  if (t) t.textContent = lt(LCURRENT==='en' ? 'lang.zh' : 'lang.en');
+  try { applyDomLangLogin(); } catch(e){}
+}
+(function loadLangLogin(){
+  try { var s = localStorage.getItem('frp-lang'); if (s==='en'||s==='zh') LCURRENT = s; } catch(e){}
+  applyLangLogin();
+  fetch('/api/i18n').then(function(r){return r.json();}).then(function(d){
+    if (d.success && d.lang && d.lang !== LCURRENT) { LCURRENT = (d.lang==='en'?'en':'zh'); applyLangLogin(); }
+  }).catch(function(){});
+})();
+document.addEventListener('DOMContentLoaded', function(){
+  var tg = document.getElementById('lgLangToggle');
+  if (tg) tg.addEventListener('click', function(){
+    LCURRENT = (LCURRENT==='en') ? 'zh' : 'en';
+    applyLangLogin();
+    try { localStorage.setItem('frp-lang', LCURRENT); } catch(e){}
+    fetch('/api/i18n',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lang:LCURRENT})}).catch(function(){});
+  });
+});
+</script>
 
 <script>
 (function () {
@@ -437,12 +996,14 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
   requestAnimationFrame(frame);
 
   /* ---------- 时钟 ---------- */
-  var WK = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+  // 星期名按「取值时」的语言决定，不能在脚本加载时就固化成一种语言
+  var WK = [['周日','Sun'], ['周一','Mon'], ['周二','Tue'], ['周三','Wed'], ['周四','Thu'], ['周五','Fri'], ['周六','Sat']];
   function pad(n) { return n < 10 ? '0' + n : '' + n; }
   function clock() {
     var d = new Date();
     $('#bigClock').textContent = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
-    $('#todayStr').textContent = d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' + WK[d.getDay()];
+    var _w = WK[d.getDay()] || WK[0];
+    $('#todayStr').textContent = d.getFullYear() + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getDate()) + ' ' + (LCURRENT === 'en' ? _w[1] : _w[0]);
     var pct = (d.getHours() * 60 + d.getMinutes()) / 1440 * 100;
     $('#dayFill').style.width = pct.toFixed(2) + '%';
     $('#dayHead').style.left = pct.toFixed(2) + '%';
@@ -476,7 +1037,7 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
       if (capSpin) capSpin.style.display = 'none';
     });
     capImg.addEventListener('error', function () {
-      if (capSpin) { capSpin.style.display = 'grid'; capSpin.textContent = '失败'; }
+      if (capSpin) { capSpin.style.display = 'grid'; capSpin.textContent = lt('lg.capfail'); }
       capImg.style.display = 'none';
     });
     setTimeout(refreshCap, 400);
@@ -491,22 +1052,26 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
     });
   }
   $('#remember').addEventListener('change', function () {
-    toast(this.checked ? '已勾选，本次登录会保留 ' + {{ remember_days }} + ' 天' : '已取消，关闭浏览器即失效');
+    toast(this.checked ? (lt('lg.remember.on') + {{ remember_days }} + lt('lg.remember.days')) : lt('lg.remember.off'));
   });
 
   /* ---------- 底部提示 ---------- */
   $('#forgot').addEventListener('click', function () {
-    toast('密码保存在服务端本地配置文件里，需由管理员修改');
+    toast(lt('lg.pwadmin'));
   });
   document.querySelectorAll('.sso button').forEach(function (b) {
-    b.addEventListener('click', function () { toast(this.getAttribute('data-tip') || ''); });
+    b.addEventListener('click', function () {
+      var k = this.getAttribute('data-tip') || '';
+      var map = {[tt("账号密码保存在服务端本地配置文件中，改完立刻生效", "Credentials are stored in the server-side config file; changes take effect immediately")]:'lg.sso1.tip',[tt("captcha = true / false 即可开关图形验证码", "Set captcha = true / false to toggle the image captcha")]:'lg.sso2.tip',[tt("enabled = false 可直接关闭整套登录保护", "Set enabled = false to turn off login protection entirely")]:'lg.sso3.tip'};
+      toast(k ? lt(map[k] || k) : '');
+    });
   });
   document.querySelectorAll('.b-links a').forEach(function (a) {
     a.addEventListener('click', function () {
       var k = this.getAttribute('data-open');
-      if (k === 'help') toast('忘记密码请联系管理员修改服务端认证配置');
-      else if (k === 'file') toast('会话使用签名 Cookie，勾选「记住此设备」可保留多天');
-      else toast('本机直接访问 http://127.0.0.1 对应的 Web 端口即可');
+      if (k === 'help') toast(lt('lg.help'));
+      else if (k === 'file') toast(lt('lg.file.tip'));
+      else toast(lt('lg.local.tip'));
     });
   });
 
@@ -521,9 +1086,9 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
     if (codeEl) c = codeEl.value.trim().toUpperCase();
 
     var bad = false;
-    if (!u) { setErr('#errUser', '请输入账号'); bad = true; }
-    if (!p) { setErr('#errPwd', '请输入密码'); bad = true; }
-    if (codeEl && c.length < 4) { setErr('#errCode', '请输入 4 位验证码'); bad = true; }
+    if (!u) { setErr('#errUser', lt('lg.err.user')); bad = true; }
+    if (!p) { setErr('#errPwd', lt('lg.err.pwd')); bad = true; }
+    if (codeEl && c.length < 4) { setErr('#errCode', lt('lg.err.code')); bad = true; }
     if (bad) { card.classList.add('shake'); setTimeout(function () { card.classList.remove('shake'); }, 560); return; }
 
     btn.classList.add('loading');
@@ -542,7 +1107,7 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
       btn.disabled = false;
       if (!d.success) {
         if (d.field) setErr(d.field === 'pwd' ? '#errPwd' : (d.field === 'code' ? '#errCode' : '#errUser'), d.message);
-        else toast(d.message || '登录失败');
+        else toast(d.message || lt('lg.fail'));
         if (d.refresh_captcha) refreshCap();
         if (codeEl) codeEl.value = '';
         card.classList.add('shake');
@@ -551,13 +1116,13 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
       }
       clearErrs();
       card.classList.add('ok');
-      $('#doneTip').textContent = '正在进入 ' + (d.redirect || '/') + ' ...';
+      $('#doneTip').textContent = ltt('正在进入 ','Entering ') + (d.redirect || '/') + ltt(' ...',' ...');
       var fl = $('#flash'); if (fl) { fl.classList.add('go'); setTimeout(function () { fl.classList.remove('go'); }, 950); }
       setTimeout(function () { window.location.href = d.redirect || '/'; }, 1250);
     }).catch(function (err) {
       btn.classList.remove('loading');
       btn.disabled = false;
-      toast('网络异常：' + err);
+      toast(lt('lg.neterr') + err);
     });
   });
 
@@ -567,7 +1132,7 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
   setTimeout(function () { toast('{{ toast }}'); }, 400);
   {% endif %}
   {% if ver_mismatch %}
-  setTimeout(function () { toast('会话已过期，请重新登录'); }, 300);
+  setTimeout(function () { toast(lt('lg.expired')); }, 300);
   {% endif %}
 })();
 </script>
