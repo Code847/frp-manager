@@ -822,8 +822,9 @@ class FRPManager:
             Wants=network-online.target
 
             [Service]
+            Type=simple
             {pre}
-            ExecStart={exec_line}
+            ExecStart={exec_line} --no-tray
             Restart=on-failure
             WorkingDirectory={os.path.dirname(os.path.abspath(__file__))}
 

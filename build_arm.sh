@@ -70,6 +70,12 @@ echo "[INFO] 清理旧构建..."
 rm -rf build dist
 
 echo "[INFO] 开始打包..."
+# 只把 configs/README.md 作为种子打包；app_settings.ini / web_auth.ini / .web_secret
+# 等运行时配置由程序首次运行自动生成，绝不能打包进发布包 —— 否则会把构建机的
+# 登录凭据哈希和 secret 带进二进制、污染所有用户环境（首次运行 seed_data 会因
+# 「目标目录已存在」而跳过覆盖）。temp/ 同理是运行时目录，不打包。
+PKG_CONFIGS="$(mktemp -d)"
+cp -f "$APP_DIR/configs/README.md" "$PKG_CONFIGS/" 2>/dev/null || true
 "$APP_DIR/venv/bin/pyinstaller" \
     --name=FRP-Manager \
     --onedir \
@@ -78,10 +84,9 @@ echo "[INFO] 开始打包..."
     --add-data "web_ui.py:." \
     --add-data "web_auth.py:." \
     --add-data "frp_manager.py:." \
-    --add-data "configs:configs" \
+    --add-data "$PKG_CONFIGS:configs" \
     --add-data "web:web" \
     --add-data "bin:bin" \
-    --add-data "temp:temp" \
     --hidden-import=requests \
     --hidden-import=psutil \
     --hidden-import=flask \
@@ -111,6 +116,7 @@ EOF
     echo "自检:  ./dist/FRP-Manager/FRP-Manager --check"
     echo "============================================================"
     echo "[提示] 目标机器需具备 glibc >= 当前构建机版本"
+    rm -rf "$PKG_CONFIGS"
 else
     echo "[ERROR] 打包失败"
     exit 1
