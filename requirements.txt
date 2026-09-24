@@ -1,5 +1,21 @@
-Flask==2.3.3
-requests==2.31.0
-psutil==5.9.6
-pystray==0.19.5
-Pillow==10.0.1
+# 核心依赖（Windows / Linux / ARM64 通用）
+#
+# 本文件用于 Python 3.8+（如 Ubuntu 20.04+ 默认 3.8/3.10）。
+# 在此环境下各包都有 aarch64 预编译 wheel，pip 会自动选用较新版本：
+#     Flask 3.x / requests 2.3x / psutil 6.x
+#
+# ⚠️ 注意：Python 3.6 + ARM aarch64 是「无解区间」——aarch64 上既没有
+# MarkupSafe 2.x 的预编译 wheel，2.1.0+ 又要求 Python >= 3.7。因此安装脚本
+# install_arm.sh 检测到 Python 3.6 时会自动改用 requirements-py36.txt
+#（Flask 1.1.x 全纯 Python wheel 链路），不要再直接用本文件装 3.6。
+#
+# 请不要写死成 Flask>=2.3，否则在 Python 3.6/3.7 上会直接报
+# "Could not find a version that satisfies the requirement"。
+Flask>=2.0,<4
+requests>=2.20
+psutil>=5.8
+
+# 系统托盘依赖：仅 Windows 桌面需要
+# Linux（含 ARM Ubuntu Server，无图形界面）不需要，避免拉入 X11 相关依赖
+pystray>=0.19.5; sys_platform == "win32"
+Pillow>=10.0; sys_platform == "win32"
