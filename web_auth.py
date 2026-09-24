@@ -337,6 +337,7 @@ def login_page():
         nxt = '/'
     return render_page(
         'login.html',
+        app_version=_app_version(),
         captcha_on=a['captcha'],
         next=nxt,
         remember_days=a['remember_days'],
@@ -356,7 +357,8 @@ def logout_page():
     if not a['enabled']:
         return redirect('/')
     return render_page(
-        'login.html', captcha_on=a['captcha'], next='/',
+        'login.html', app_version=_app_version(),
+        captcha_on=a['captcha'], next='/',
         remember_days=a['remember_days'],
         toast='已安全退出',
         default_pwd=(password_ok(a['password'], 'admin') and a['username'] == 'admin'),
@@ -602,6 +604,18 @@ def auth_enabled(config=None):
 # 首页与登录页的完整 HTML 都放在 web/ 目录下（index.html / login.html），
 # CSS 与 JS 已内联在里面 —— 换界面只需要替换那一个 html 文件，不用碰 Python。
 # ---------------------------------------------------------------------------
+
+def _app_version():
+    """当前程序版本（登录页右上角显示用）。
+
+    web_ui 会 import web_auth，所以这里运行时再取，避免循环导入。
+    """
+    try:
+        import web_ui
+        return web_ui.app_version()
+    except Exception:
+        return ''
+
 
 def load_page_html(name):
     """读取 web/<name>。依次在 源码目录 / PyInstaller 临时目录 下查找。
