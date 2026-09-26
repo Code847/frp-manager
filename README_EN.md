@@ -64,6 +64,7 @@ A clean and efficient cross-platform FRP management tool with a Web UI for confi
 - ✅ **PWA** - add to Home Screen / desktop icon; shell works offline, live data always from network
 - ✅ **Keyboard shortcuts** - `?` help, `/` focus filter, `Esc` close, `Ctrl+S` save, `Ctrl+D` refresh
 - ✅ **Accessibility** - skip link, `focus-visible` rings, aria / role semantics
+- ✅ **Single-file exe distribution** - `python build_exe.py` produces a standalone exe (no Python needed on the target machine); `build_installer.bat` wraps it into an installer with optional autostart and desktop shortcut
 
 ## 🚀 Quick Start
 
@@ -280,6 +281,10 @@ frp-manager/
 ├── web_ui.py              # Flask routes & business APIs
 ├── web_auth.py            # login auth (password / SVG captcha / sessions)
 ├── download_frp.py        # standalone frp downloader
+├── build_exe.py           # PyInstaller packaging (onefile exe; --onedir for debugging)
+├── installer.iss          # Inno Setup 6 script for the Windows installer
+├── build_installer.bat    # one-click installer build (version read from the exe)
+├── dist/                  # build output (gitignored)
 ├── web/                   # UI: single-file index.html + login.html (all inline)
 │   ├── manifest.webmanifest # PWA manifest
 │   ├── sw.js                # service worker (static only; API and /login never cached)
@@ -302,6 +307,34 @@ frp-manager/
 | `Ctrl+D` | Refresh the current page |
 
 Shortcuts are ignored while typing in an input, textarea or select.
+
+## 📦 Windows Packaging (v1.16.0)
+
+Build a standalone exe or a full installer:
+
+```bash
+pip install -r requirements.txt pyinstaller
+
+python build_exe.py            # -> dist\FRP-Manager-<timestamp>.exe  (~34 MB)
+python build_exe.py --onedir   # debug build: console output, faster startup
+
+build_installer.bat            # -> Output\FRP-Manager-<version>-Setup.exe
+```
+
+The packaged resources are deliberately **clean**:
+
+- Only `configs/README.md` is bundled as the seed. `seed_data()` copies bundled
+  configs into the user data directory on first run, so shipping the build
+  machine's own `web_auth.ini` / `.web_secret` / `client.toml` would leak its
+  credentials and seed every user's first start with another's settings.
+- Only the two frp binaries for the current platform are bundled. Cross-platform
+  files also inflated the exe from ~34 MB to ~150 MB.
+- The seeded layout is flat (`_MEIPASS/bin/frpc_windows_amd64.exe`). A nested
+  `bin/bin/` made the launcher silently re-download frp from GitHub instead of
+  failing loudly - which looks like "slow first start" and hides completely.
+
+Runtime data (`configs/` `bin/` `logs/` `temp/`) is written next to the exe and
+never removed by the uninstaller.
 
 ## 📦 ARM / Ubuntu Deployment
 

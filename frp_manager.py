@@ -36,7 +36,7 @@ except ImportError:  # 允许在没装 requests 时仍能导入（由 main.py �
 DEFAULT_FRP_VERSION = '0.71.0'
 
 # 程序自身版本（v1.14.0 起集中于此，main.py 从本模块导入，避免多处漂移）
-APP_VERSION = '1.15.0'
+APP_VERSION = '1.16.0'
 
 # 面板自更新（v1.14.0）：官方发布仓库与更新包资产名
 UPDATE_REPO = 'Code847/frp-manager'
@@ -2414,6 +2414,17 @@ class FRPManager:
             if m:
                 return m.group(1).strip().strip('"\'')
         return ''
+
+    # ---- 语言文案入口（模块级 _m / _msg_lang 的实例代理） ----
+    # main() 里局部变量 `frp_manager` 是 FRPManager 实例（见 main.py 的
+    # `frp_manager = FRPManager(cfg)`），而 _m / _msg_lang 只定义在模块层。
+    # 直接 `frp_manager._m(...)` 会抛 AttributeError，被 try/except 吞成一行
+    # WARN，导致「配置安全扫描」整段启动检查静默失效。这里补实例入口。
+    def _m(self, zh, en=None):
+        return _m(zh, en)
+
+    def _msg_lang(self):
+        return _msg_lang()
 
     def scan_security(self):
         """扫描 frps/frpc 配置里的风险项，返回问题列表（含级别与修复建议）。"""

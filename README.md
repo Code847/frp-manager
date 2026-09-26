@@ -63,8 +63,23 @@
 - ✅ **PWA** - 支持「添加到主屏幕 / 桌面图标」，离线可看主框架，状态刷新走网络
 - ✅ **键盘快捷键** - `?` 帮助、`/` 跳过滤框、`Esc` 关弹层、`Ctrl+S` 保存、`Ctrl+D` 刷新当前页
 - ✅ **无障碍增强** - 跳转链接、`focus-visible` 焦点环、`aria-*` 与 `role` 语义标注
+- ✅ **单文件 exe 分发** - `python build_exe.py` 打成独立 exe（无需装 Python），`build_installer.bat` 再出安装包；可选开机启动与桌面快捷方式
 
 ## 📝 版本历史
+
+### v1.16.0
+> Windows 打包分发落地 —— 从「能跑」到「能发出去」
+
+- **单文件 exe**：`build_exe.py` 用 PyInstaller 打出 `--onefile --windowed` 的独立 exe（约 34MB），双击即用、不需要在目标机装 Python；`python build_exe.py --onedir` 可切到调试模式（控制台输出完整、便于排错）
+- **打包资源平台化与净化**（两个真实缺陷，都与发布安全有关）
+  - **不再把构建机凭据打进安装包**：`seed_data()` 首次运行会把打包里的 `configs/` 播成用户配置，此前 `build_exe.py` 直接 `--add-data configs;configs`，等于把 `.web_secret`（会话签名密钥）、`web_auth.ini`（口令哈希）连同构建机的 `client.toml` / `server.ini` / `app_settings.ini` 一起发出去，且会污染所有用户首次启动的环境。现在只打包 `configs/README.md` 一个干净模板，其余由程序首次运行自动生成
+  - **只带当前平台的 frp 二进制**：原先 `bin/`（137MB，含 4 个 Linux 二进制）全量入包，现在按平台挑 frp 那两个文件，产物从 ~150MB 降到 34MB
+  - 顺带移除多余的 `--add-binary python3xx.dll`（onefile 已内嵌运行时）、补 `--help`（此前拼错参数会直接触发一次完整打包）、修 `stage_platform_binaries` 少了建目录（WinError 3）
+- **二进制资源路径多套一层（曾被自动下载掩盖）**：`--add-data <d>/bin;bin` 会解成 `_MEIPASS/bin/bin/frpc.exe`，程序找不到 frp 二进制时**不报错**，而是静默去 GitHub 重新下载——表现只是「首次启动好慢」，极易漏掉。现已修正为平铺到 `bin/`，并已实测打包产物**不再触发下载**
+- **修复「配置安全扫描」从未真正执行**：`main.py` 里 `frp_manager` 是 `FRPManager` **实例**，但 `_m()` / `_msg_lang()` 只定义在**模块层**，调用抛 `AttributeError`，被 `except` 吞成一行 WARN，整段启动检查形同虚设。已在 `FRPManager` 上补实例入口，扫描现在真能跑出结果
+- **安装包**：`installer.iss`（Inno Setup 6）+ `build_installer.bat` 一键出安装包，可选「开机自动启动」「桌面快捷方式」；数据目录与安装目录分离，卸载不丢用户配置
+- **验证**：在真实 Windows 上启动打包产物实测——`/` 302 到登录、`/login` 200、`sw.js` / `manifest.webmanifest` / `icon.svg` 均 200（PWA 在单文件包下正常）；质检链新增两段门禁——**启动路径自检**（从 `main.py` 抽出 19 个 `frp_manager.X()` 调用逐个断言存在，专抓被 except 吞掉的失效功能）与**安装包脚本静态自检**
+- **未完成的 ㉑ CI**：自动化构建仍待接入 GitHub Actions，当前需在本机手动跑 `build_exe.py` → `build_installer.bat`
 
 ### v1.15.0
 > 登录加固 · 二进制分化下载 · 配置门槛降低 · PWA · 体验收尾
@@ -88,7 +103,7 @@
 - **体验收尾**：全局键盘快捷键（`?` 帮助、`/` 跳过滤框、`Esc` 关弹层/表单、`Ctrl+S` 保存当前区块、`Ctrl+D` 刷新当前页，按 `?` 有说明弹层）；无障碍增强（跳转到主内容链接、`focus-visible` 焦点环、`role="navigation"/"dialog"` 与 `aria-label/aria-modal`）
 - **验证**：`py_compile` ×6、内联 script `node --check`（原始 + Flask 渲染产物）、HTML 标签平衡、Flask `test_client` e2e（`E2E-ALL-OK`）、接线 152/152 无死控件、CSS 变量 33/33 无未声明；另写了下载沙箱集成实测（`dltest.py`）跑通断点续传 / 服务端无视 Range / 404 / SHA256 通过与篡改失败 / 分化下载落盘与不安装
 
-### v1.14.0（已并入 v1.15.0）
+### v1.14.0（已并入 v1.16.0）
 > 面板自更新（一键升级、自动备份、可回滚）——内容保留于此，不再单独发布
 
 - **面板自更新（self-update）**：侧栏新增「面板更新」页，支持一键检查并升级本管理面板自身（`main.py` / `web/index.html` / `frp_manager.py` / `web_ui.py` 等）。
@@ -620,7 +635,14 @@ curl -u admin:密码 http://127.0.0.1:7500/api/proxy/tcp
 
 > v1.7.0 ~ v1.12.0 的详细变更见顶部 [📝 版本历史](#-版本历史)。
 
-### v1.15.0（当前）
+### v1.16.0（当前）
+- **单文件 exe 分发**：`build_exe.py` 打出无需装 Python 的独立 exe（34MB），`build_installer.bat` 再出 Inno Setup 安装包
+- **打包资源净化**：只打 `configs/README.md` 一个干净模板 + 当前平台那两个 frp 二进制，不再泄露构建机凭据、不再把 137MB 跨平台二进制塞进包
+- **修复二进制路径多套一层**：frp 二进制曾因路径错位而静默走网络下载，现已修正并实测不再触发下载
+- **修复配置安全扫描从未执行**：实例调用模块级 `_m()` / `_msg_lang()` 抛错被 except 吞掉，已补实例入口
+- **两段新门禁**：启动路径自检（19 个调用逐个断言）、安装包脚本静态自检
+
+### v1.15.0
 - **登录加固（安全中心 → 登录加固）**：登录失败限流锁定、IP 白名单（支持 CIDR）、TOTP 二次验证（RFC6238）；设置存 `configs/web_auth.ini [security]`，改完立即生效
 - **二进制分化下载**：9 种 OS/架构可选 + SHA256 校验 + 断点续传；选非本机平台时只下载到 `packages/` 不安装
 - **配置门槛降低**：代理编辑器新增预设模板（ssh/rdp/web/db）、行内即时校验、一键复制整行
