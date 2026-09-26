@@ -58,8 +58,48 @@
 - ✅ **操作审计独立页** - 独立成页（在「运行日志」下方），支持关键字过滤 / 成败筛选 / 统计卡片 / 一键导出
 - ✅ **浅色·深色双主题** - 白色与黑色科技感两套配色一键切换，下拉框、表格、卡片、滚动条全局统一
 - ✅ **按页懒加载** - 首屏只加载当前页数据，切页才按需请求，轮询在后台自动跳过
+- ✅ **登录加固** - 登录失败限流锁定、`IP 白名单（CIDR）`、可选 **TOTP 二次验证**（RFC6238，纯 Python 实现）
+- ✅ **二进制分化下载** - 按目标平台（9 种 OS/架构）下载官方包 + **SHA256 校验** + **断点续传**，只取包不安装
+- ✅ **PWA** - 支持「添加到主屏幕 / 桌面图标」，离线可看主框架，状态刷新走网络
+- ✅ **键盘快捷键** - `?` 帮助、`/` 跳过滤框、`Esc` 关弹层、`Ctrl+S` 保存、`Ctrl+D` 刷新当前页
+- ✅ **无障碍增强** - 跳转链接、`focus-visible` 焦点环、`aria-*` 与 `role` 语义标注
 
 ## 📝 版本历史
+
+### v1.15.0
+> 登录加固 · 二进制分化下载 · 配置门槛降低 · PWA · 体验收尾
+
+- **登录加固（安全中心 → 登录加固）**
+  - **登录失败限流**：按 IP 计数，N 次失败后锁 L 分钟；阈值 / 窗口 / 锁定时长可配，存 `configs/web_auth.ini` 的 `[security]` 段（默认关闭，改完立即生效，不需要重启）
+  - **IP 白名单（CIDR）**：支持 `192.168.1.0/24`、`10.0.0.0/8` 等写法，白名单内直接放行、连限流都不计；填错也不会把自己锁在门外（该端点免登录）
+  - **TOTP 二次验证（RFC6238）**：纯 Python 实现（Base32 + HMAC-SHA1 + 动态截断，30 秒窗口），点「启用」给 otpauth:// URI 与密钥可扫码；启用后登录必须额外填 6 位动态码，错误即 400。端点：`/api/auth/security`（读写）、`/api/auth/totp/setup`、`/api/auth/totp/enable`、`/api/auth/totp/disable`
+  - **踩坑记录**：Flask 蓝图必须**先** `add_url_rule` **再** `register_blueprint`（反过来会抛 `AssertionError` 让整段登录模块失效）；同一 endpoint 不能挂两个不同函数（GET/POST 要加方法后缀），否则 `register_blueprint` 直接崩、所有端点一起失效
+- **二进制分化下载 + 完整性校验**
+  - 9 种目标平台（Windows x86_64/ARM64/32 位、Linux x86_64/ARM64/ARMv7/32 位、macOS x86_64/Apple Silicon），文件名按官方命名（`frp_0.71.0_linux_arm64.tar.gz`）
+  - **SHA256 校验**：拉 release 的 `checksums.txt` 比对，不符即丢弃该包并标记失败；取不到校验值时**跳过校验**而不是直接判失败（离线 / 自建发布页友好）
+  - **断点续传**：用 HTTP `Range` 续写 `.part` 临时文件；服务端无视 Range 回 200 时自动丢弃半截重下，异常时保留 `.part` 供下次续传
+  - **分化下载**：选非当前平台时**只把包放到 `packages/` 供拷到目标设备，绝不覆盖本机 `bin/`**；进度里展示 `checksum / verified` 阶段与最终 SHA256
+- **配置门槛降低（代理编辑器）**
+  - **预设模板**：ssh / rdp / web / db 一键套用常用字段组合，新手不用逐项猜
+  - **行内校验**：名称格式与去重、端口整数与范围、类型必填项，出错即时红框 + 下方文字提示并抖动一次；`Ctrl+S` / 保存按钮走同一套校验
+  - **一键复制**：代理列表每行新增「复制」按钮，改个名字就能克隆出同类代理
+  - 补 `tcpmux` 类型字段
+- **PWA**：新增 `manifest.webmanifest` / `sw.js` / `icon.svg`，可「添加到主屏幕 / 桌面图标」独立窗口打开；SW 只对静态资源缓存，API 与 `/login` 永不缓存，只注册在 https / localhost（局域网 http 静默降级）。`/sw.js` 等三个资源已加入免登录白名单——否则未登录时被 302 会直接把 PWA 搞坏
+- **体验收尾**：全局键盘快捷键（`?` 帮助、`/` 跳过滤框、`Esc` 关弹层/表单、`Ctrl+S` 保存当前区块、`Ctrl+D` 刷新当前页，按 `?` 有说明弹层）；无障碍增强（跳转到主内容链接、`focus-visible` 焦点环、`role="navigation"/"dialog"` 与 `aria-label/aria-modal`）
+- **验证**：`py_compile` ×6、内联 script `node --check`（原始 + Flask 渲染产物）、HTML 标签平衡、Flask `test_client` e2e（`E2E-ALL-OK`）、接线 152/152 无死控件、CSS 变量 33/33 无未声明；另写了下载沙箱集成实测（`dltest.py`）跑通断点续传 / 服务端无视 Range / 404 / SHA256 通过与篡改失败 / 分化下载落盘与不安装
+
+### v1.14.0（已并入 v1.15.0）
+> 面板自更新（一键升级、自动备份、可回滚）——内容保留于此，不再单独发布
+
+- **面板自更新（self-update）**：侧栏新增「面板更新」页，支持一键检查并升级本管理面板自身（`main.py` / `web/index.html` / `frp_manager.py` / `web_ui.py` 等）。
+- **双更新源**：默认走官方 GitHub Releases（匿名下载，无需令牌）；也支持在设置里填自定义 manifest URL（JSON：`{version, notes, url, sha256?}`），便于内网 / 私有分发或本地验证。
+- **更新包规范**：下载后先按 SHA256（manifest 提供时）校验，再覆盖；覆盖时**只动代码文件**，`configs / logs / temp / bin / .git / .workbuddy / venv` 等受保护目录一律排除，更新不丢配置、不删已下载的 frp 二进制。
+- **安全覆盖**：解压使用 `zipfile.extractall(filter='data')`（Python 3.12+）防范 zip 路径穿越；更新包可能把根目录直接打包或套一层子目录，程序会自动定位含 `main.py` 的根。
+- **自动备份 + 回滚**：每次覆盖前先把当前版本整目录备份到 `temp/backup/<时间戳>/`，更新失败或想撤销时，在「面板更新」页点「回滚」即可恢复到更新前的版本。
+- **原地重启**：更新 / 回滚完成后用 `os.execv` / `Popen` 跨平台原地拉起新进程（Windows 用 `pythonw` 无黑窗），全程在后台线程执行，不会阻塞 Web 请求。
+- **版本号集中**：`main.py` 的 `VERSION` 改为 `from frp_manager import APP_VERSION`，以后升版本只需改一处。
+- **API**：新增 `GET /api/update/check`、`GET/POST /api/update/source`、`POST /api/update/apply`、`POST /api/update/rollback`；`/api/info` 新增返回 `app_version`。
+- **验证**：py_compile ×6、内联 script `node --check`（基于 Flask 渲染产物）、HTML 标签平衡、Flask `test_client` e2e、接线与 CSS 变量自检全通过；并以本地 manifest + 自签 zip 实测了「检查 / 下载 / 备份 / 覆盖（不碰 configs/bin）/ 回滚」全流程。
 
 ### v1.13.0
 > 定时重启 + 文档双语化
@@ -245,11 +285,15 @@ frp-manager/
 │   ├── client.toml        # frpc 实际使用的配置
 │   ├── server.toml(.ini)  # frps 实际使用的配置
 │   ├── web_port.ini       # Web UI 端口
-│   ├── web_auth.ini       # ★ Web 登录账号密码 + 图形验证码开关
+│   ├── web_auth.ini       # ★ Web 登录账号密码 + 图形验证码开关 + [security] 登录加固
 │   └── .web_secret        # 会话签名密钥（自动生成，勿手动改）
+├── packages/              # 分化下载产物：非本机平台的官方发布包（拷到目标设备用，bin/ 不受影响）
 ├── web/                   # ★ 界面目录：改界面只动这里，不用碰 Python
 │   ├── index.html         #   主控面板（CSS / JS 全部内联，单文件可整体替换）
-│   └── login.html         #   登录页（CSS / JS 全部内联）
+│   ├── login.html         #   登录页（CSS / JS 全部内联）
+│   ├── manifest.webmanifest # PWA 清单（加到主屏幕 / 桌面图标）
+│   ├── sw.js              #   Service Worker（静态资源缓存，API 与 /login 永不缓存）
+│   └── icon.svg           #   PWA 图标（512×512，靛蓝→天蓝渐变）
 ├── temp/                  # 运行时临时目录（下载解压 / 锁文件 / PID）
 └── logs/                  # 日志目录（frp_client_*.log / frp_server_*.log）
 ```
@@ -274,8 +318,19 @@ frp-manager/
    也可以直接用 `frpc` / `frps` 原名。程序**不会覆盖已存在的文件**，同名文件请自行先删再放。
 3. **指定版本 / 镜像** — `POST /api/download-frp` 带 `version`、`mirror` 参数；界面里可先「检查更新」确认最新版本号，并在「下载镜像（国内代理）」下拉里选择优先使用的代理（ghfast / gh-proxy.com / ghproxy.net / mirror.ghproxy.com，或仅官方 GitHub）。
 
-**下载进度**：点「下载 / 更新 FRP」后改为后台进行，页面下方实时显示进度条（解析版本 → 下载中 → 解压中 → 安装中 → 完成），
+**下载进度**：点「下载 / 更新 FRP」后改为后台进行，页面下方实时显示进度条（解析版本 → 获取校验值 → 下载中 → SHA256 校验 → 解压中 → 安装中 → 完成），
 并通过 `GET /api/download-frp/progress` 轮询；无需傻等。下载镜像偏好会记到 `configs/app_settings.ini`，下次自动沿用。
+
+**下载的三个「现在的」能力**（v1.15.0）：
+
+| 能力 | 说明 |
+|------|------|
+| SHA256 校验 | 自动拉官方 `checksums.txt` 比对，不符即丢弃该包并标记失败；取不到校验值时**跳过**而不是判失败 |
+| 断点续传 | 用 HTTP `Range` 续写 `.part` 临时文件；服务端不支持 Range 会自动重下；中途异常保留 `.part`，下次接着下 |
+| 分化下载 | 在「下载目标平台」里选**非当前平台**（如给 ARM 设备准备 Linux ARM64 包），下载后放到 `packages/` 供拷走，**不碰本机 `bin/`**；进度条下方展示校验结果与最终 SHA256 |
+
+可选平台共 9 种：Windows（x86_64 / ARM64 / 32 位）、Linux（x86_64 / ARM64 / ARMv7 / 32 位）、macOS（x86_64 / Apple Silicon）。
+输入框同时接受 `linux_arm64`、`linux-arm64`、`linux/arm64` 三种写法。
 
 替换后在「frp 二进制」区块可看到探测到的版本号（由 `<bin> -v` 得到），重新启动 FRP 即生效。
 
@@ -382,6 +437,32 @@ remember_days   = 7         # 勾选「记住此设备」后保留的天数
 | **图形验证码** | `captcha = true` 时登录页多一个 4 位验证码输入框；图片由后端纯 Python 生成 SVG（无 Pillow 依赖），点击图片换一张，3 分钟失效 |
 | **改密方式** | 「配置与下载 → Web 设置 → 登录认证」，或在机器上编辑 `configs/web_auth.ini` |
 | **忘记密码** | 编辑 `configs/web_auth.ini` 的 `password` 一行即可，无需重启进程 |
+
+### 🛡️ 登录加固（v1.15.0）
+
+同文件下方多一段 `[security]`，全部**默认关闭、改完立即生效、不用重启**：
+
+```ini
+[security]
+login_rate_limit = false   # 登录失败限流总开关
+max_fails         = 5      # 窗口内失败多少次
+fail_window_min   = 15     # 统计窗口（分钟）
+lock_min          = 30     # 触发后锁多久（分钟）
+ip_allowlist      =        # IP 白名单，逗号分隔，支持 CIDR
+totp_enabled      = false  # TOTP 二次验证总开关
+totp_secret       =        # TOTP 密钥（由界面生成，勿手改）
+```
+
+界面入口：**安全中心 → 登录加固**（与账号密码配置同页，改完点「保存」）。
+
+| 选项 | 说明 |
+|------|------|
+| **登录失败限流** | 同一 IP 在窗口内失败达 `max_fails` 次后锁 `lock_min` 分钟，期间该 IP 一律拒绝；计数与锁定都在内存里，重启即清零 |
+| **IP 白名单（CIDR）** | 填 `192.168.1.0/24`、`10.0.0.0/8` 这类网段即可；白名单内的 IP **直接放行、连失败计数都不走**，误配也不会把自己锁在门外 |
+| **TOTP 二次验证** | RFC6238 纯 Python 实现（无需任何第三方包）。点「设置 TOTP」会给出密钥与 `otpauth://` URI，用 Authenticator / 1Password 等 App 扫码；启用后登录要多填 6 位动态码，错即拒绝 |
+
+> **注意**：TOTP 一旦启用，密钥请自行备份——密钥丢失只能到「安全中心」关掉二次验证后重新绑定。
+> 相关端点（`/api/auth/security`、`/api/auth/totp/*`）**免登录可访问**，就是为了防止误把白名单/开关配错后连不上门。
 | **彻底免登录** | 把 `enabled` 改成 `false`，或在「Web 设置」里取消勾选「访问面板前必须登录」 |
 | **会话失效** | 改了密码/账号后，所有已登录会话立即失效；前端检测到 401 会自动跳回登录页 |
 
@@ -444,7 +525,7 @@ remote_port = 远程端口
 | `/api/log` | GET | 运行日志，`mode=all\|client\|server\|webui`、`lines=N\|all`；每行带 `[frpc]`/`[frps]`/`[面板]` 前缀 |
 | `/api/links` | GET | 当前 HTTP 链接状态（本面板 / frps 管理API / 接入端口 / http 穿透域名） |
 | `/api/log/clear` | POST | 清空 `logs/` 下的 frp 运行日志 |
-| `/api/download-frp` | POST | 后台下载/更新当前架构的 frp 二进制（可带 `version` / `mirror`），立即返回，进度见下条 |
+| `/api/download-frp` | POST | 后台下载/更新 frp 二进制（可带 `version` / `mirror` / `target` / `verify`），立即返回，进度见下条 |
 | `/api/download-frp/progress` | GET | 查询后台下载进度（`phase` / `percent` / `done` / `total` / `ok` / `finished`） |
 | `/api/settings/autostart` | GET/POST | 开机启动设置：读取当前设置与系统是否支持、是否已注册；保存时写 `configs/app_settings.ini` 并按需注册/注销开机启动（`app_on_boot` / `frpc_on_start` / `frps_on_start` / `mirror`） |
 | `/login` | GET | 登录页（未启用认证时自动跳回首页） |
@@ -452,6 +533,13 @@ remote_port = 远程端口
 | `/api/captcha` | GET | 取一张图形验证码（SVG），答案存在会话里，3 分钟失效 |
 | `/api/login` | POST | `user` / `pwd` / `code` / `remember` / `next`，成功返回跳转地址 |
 | `/api/auth/config` | GET/POST | 读取 / 修改登录认证配置（账号、密码、验证码开关、会话时长） |
+| `/api/auth/security` | GET/POST | 读取 / 修改**登录加固**设置（限流阈值、锁定时长、IP 白名单 CIDR、TOTP 开关）——**免登录** |
+| `/api/auth/totp/setup` | POST | **免登录**。生成 TOTP 密钥，返回 `secret` 与 `otpauth://` URI；同时把密钥暂存但不生效 |
+| `/api/auth/totp/enable` | POST | **免登录**。提交 6 位动态码校验通过后真正启用 TOTP，body `{code}` |
+| `/api/auth/totp/disable` | POST | **免登录**。关闭 TOTP 二次验证 |
+| `/manifest.webmanifest` | GET | PWA 清单（免登录，否则「添加到主屏幕」拿不到） |
+| `/sw.js` | GET | Service Worker（免登录 + `no-cache`，否则 SW 升级会被旧缓存挡住） |
+| `/icon.svg` | GET | PWA 图标（免登录） |
 
 ### 服务端（frps）管理 API 怎么连
 
@@ -532,7 +620,20 @@ curl -u admin:密码 http://127.0.0.1:7500/api/proxy/tcp
 
 > v1.7.0 ~ v1.12.0 的详细变更见顶部 [📝 版本历史](#-版本历史)。
 
-### v1.13.2（当前）
+### v1.15.0（当前）
+- **登录加固（安全中心 → 登录加固）**：登录失败限流锁定、IP 白名单（支持 CIDR）、TOTP 二次验证（RFC6238）；设置存 `configs/web_auth.ini [security]`，改完立即生效
+- **二进制分化下载**：9 种 OS/架构可选 + SHA256 校验 + 断点续传；选非本机平台时只下载到 `packages/` 不安装
+- **配置门槛降低**：代理编辑器新增预设模板（ssh/rdp/web/db）、行内即时校验、一键复制整行
+- **PWA**：可「添加到主屏幕 / 桌面图标」独立窗口使用，静态资源离线可用、API 永不缓存
+- **体验收尾**：全局键盘快捷键（`?` `/` `Esc` `Ctrl+S` `Ctrl+D`）+ 无障碍增强（跳转链接、`focus-visible`、aria/role 语义）
+
+### v1.14.0
+- **面板自更新（self-update）**：「面板更新」页支持一键检查并升级面板自身，更新前自动整目录备份、更新只覆盖代码文件（绝不碰 `configs / logs / temp / bin`），可一键回滚，完成后原地重启
+- **双更新源**：默认官方 GitHub Releases 匿名下载；也支持自定义 manifest URL（`{version, notes, url, sha256?}`）用于内网 / 私有分发与本地验证
+- **安全覆盖**：SHA256 校验 + `extractall(filter='data')` 防路径穿越 + 自动定位更新包根目录
+- **版本号集中**：`main.py` 的 `VERSION` 改为从 `frp_manager.APP_VERSION` 导入，升版本只改一处
+
+### v1.13.2
 - **登录页也能切中英文**：登录页此前完全跟随服务端语言、自己不能切；现在同样带 🌐 按钮，并把 `/api/i18n` 加入免登录白名单（否则登录页既读不到、也存不下语言偏好）
 - **修复登录页英文字典整块失效**：英文字典漏了 `lg.` 前缀，导致账号 / 密码 / 验证码占位符与各类提示切到英文后仍是中文
 - **切换按钮语义修正**：按钮显示「目标语言」——中文模式显示 `English`，点击变英文后显示 `中文`，再点回中文

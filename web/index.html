@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FRP Manager - 跨平台版</title>
+    <meta name="description" content="frpc / frps 可视化管理面板">
+    <meta name="theme-color" content="#4f46e5">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/svg+xml" href="/icon.svg">
+    <link rel="apple-touch-icon" href="/icon.svg">
     <style>
                 * { margin:0; padding:0; box-sizing:border-box; }
 
@@ -123,6 +128,27 @@
 
         /* 下载进度条 */
         .dl-progress{margin:6px 0 4px}
+        .dl-sha{margin-top:6px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:.75rem; color:var(--txt3); word-break:break-all}
+        .dl-sha.ok{color:#22c55e}
+    /* ===== 无障碍 / 键盘体验（v1.15.0）===== */
+    .skip-link{position:absolute; left:-9999px; top:8px; z-index:9999; padding:8px 14px;
+        background:var(--panel); color:var(--txt); border:1px solid var(--line-strong);
+        border-radius:8px; text-decoration:none; font-size:.85rem}
+    .skip-link:focus{left:12px}
+    :focus-visible{outline:2px solid var(--cyan, #4f46e5); outline-offset:2px}
+    .kb-help-box{background:var(--panel); color:var(--txt)}
+    .kb-help{position:fixed; inset:0; z-index:9000; display:flex; align-items:center; justify-content:center;
+        background:rgba(15,23,42,.42); padding:20px}
+    .kb-help-box{width:min(440px,100%); padding:22px 24px; border:1px solid var(--line);
+        border-radius:14px; box-shadow:var(--card-shadow,0 12px 40px rgba(15,23,42,.18))}
+    .kb-help-box h3{font-size:1.05rem; margin-bottom:12px}
+    .kb-list{display:grid; grid-template-columns:auto 1fr; gap:8px 14px; margin:0 0 12px; font-size:.88rem}
+    .kb-list dt{text-align:right}
+    .kb-list dd{margin:0; color:var(--txt2)}
+    .kb-list kbd{display:inline-block; min-width:22px; text-align:center; padding:2px 7px;
+        border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:6px;
+        background:var(--panel2); font-family:inherit; font-size:.85em}
+    .kb-close{margin-top:6px}
         .dl-bar{height:12px; border-radius:7px; background:var(--panel2);
                 border:1px solid var(--line); overflow:hidden}
         .dl-bar-fill{height:100%; width:0%; border-radius:7px;
@@ -488,6 +514,21 @@
 </head>
 <body>
     <input type="checkbox" id="nav-toggle" class="nav-toggle-cb">
+    <a class="skip-link" href="#pageDashboard" data-i18n="a11y.skip">跳到主内容</a>
+    <div id="kbHelp" class="kb-help" style="display:none" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
+        <div class="kb-help-box">
+            <h3 data-i18n="kb.title">键盘快捷键</h3>
+            <dl class="kb-list">
+                <dt><kbd>?</kbd></dt><dd data-i18n="kb.help">打开 / 关闭本帮助</dd>
+                <dt><kbd>/</kbd></dt><dd data-i18n="kb.focus">跳到关键字过滤框</dd>
+                <dt><kbd>Esc</kbd></dt><dd data-i18n="kb.esc">关闭表单 / 弹层</dd>
+                <dt><kbd>Ctrl</kbd>+<kbd>S</kbd></dt><dd data-i18n="kb.save">保存当前区块的设置</dd>
+                <dt><kbd>Ctrl</kbd>+<kbd>D</kbd></dt><dd data-i18n="kb.refresh">刷新当前页面数据</dd>
+            </dl>
+            <p class="hint" data-i18n="kb.note">在输入框内一律不触发这些快捷键。</p>
+            <button type="button" class="btn btn-primary kb-close" data-i18n="btn.close">关闭</button>
+        </div>
+    </div>
     <aside class="sidebar">
         <div class="sidebar-brand">
             FRP Manager
@@ -522,7 +563,7 @@
                 <span class="ss-state" id="serverSideText">检查中…</span>
             </div>
         </div>
-        <nav class="sidebar-nav">
+        <nav class="sidebar-nav" role="navigation" aria-label="主导航">
             {# 树形目录：一级 = 页面，缩进二级 = 该页里的段落（顺序与页面自上而下完全一致） #}
             <a class="nav-item cur" href="#" data-page="dashboard" data-i18n="nav.dashboard">运行状态</a>
             <div class="nav-sub nav-dash">
@@ -557,6 +598,7 @@
 
             <a class="nav-item" href="#" data-page="logs" data-i18n="nav.logs">运行日志</a>
             <a class="nav-item" href="#" data-page="audit" data-i18n="nav.audit">操作审计</a>
+            <a class="nav-item" href="#" data-page="update" data-i18n="nav.update">面板更新</a>
         </nav>
         <div class="sidebar-footer">
             系统: {{ system_info }}<br>目标: {{ arch_info }}
@@ -832,6 +874,24 @@ dashboard_pwd = 改成更复杂的</pre>
                             <option value="github">仅官方 GitHub（不使用代理）</option>
                         </select>
                     </div>
+                    <div class="form-group">
+                        <label data-i18n="dl.target">目标平台:</label>
+                        <select id="dlTarget">
+                            <option value="" data-i18n="dl.target.current">当前平台（下载并安装）</option>
+                            <option value="linux_amd64">Linux x86_64</option>
+                            <option value="linux_arm64">Linux ARM64</option>
+                            <option value="linux_arm">Linux ARMv7</option>
+                            <option value="linux_386">Linux 32 位</option>
+                            <option value="windows_amd64">Windows x86_64</option>
+                            <option value="windows_arm64">Windows ARM64</option>
+                            <option value="windows_386">Windows 32 位</option>
+                            <option value="darwin_amd64">macOS x86_64</option>
+                            <option value="darwin_arm64">macOS Apple Silicon</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="chk"><input type="checkbox" id="dlVerify" checked> <span data-i18n="dl.verify">下载后校验 SHA256</span></label>
+                    </div>
                 </div>
                 <div id="dlProgressWrap" class="dl-progress" style="display:none">
                     <div class="dl-bar"><div id="dlBarFill" class="dl-bar-fill"></div></div>
@@ -840,6 +900,7 @@ dashboard_pwd = 改成更复杂的</pre>
                         <span id="dlPercent">0%</span> ·
                         <span id="dlDetail"></span>
                     </div>
+                    <div id="dlSha" class="dl-sha" style="display:none"></div>
                 </div>
                 <div class="bins-grid">
                     <div class="bin-card">
@@ -1303,6 +1364,14 @@ dashboard_pwd = 改成更复杂的</pre>
                     <h2 data-i18n="sec.proxies">代理编辑器</h2>
                     <div class="sec-audit-tools">
                         <span class="sec-count">共 <b id="proxyCount">0</b> 条代理</span>
+                        <select id="proxyPresetSel" class="proxy-preset">
+                            <option value="">快捷添加…</option>
+                            <option value="ssh">SSH（22 → 远程 6000）</option>
+                            <option value="rdp">RDP（3389 → 远程 6001）</option>
+                            <option value="web">Web（本地 80 → 子域名 web）</option>
+                            <option value="db">数据库（3306 → 远程 6002）</option>
+                        </select>
+                        <button id="proxyPresetBtn" class="btn btn-secondary" type="button" data-i18n="proxy.preset.add">套用</button>
                         <button id="proxyReloadBtn" class="btn btn-secondary" type="button" data-i18n="btn.refresh">刷新</button>
                         <button id="proxyAddBtn" class="btn btn-primary" type="button" data-i18n="btn.add">新增代理</button>
                     </div>
@@ -1329,6 +1398,7 @@ dashboard_pwd = 改成更复杂的</pre>
                         <label class="pf"><span data-i18n="proxy.type">类型</span>
                             <select id="proxyType">
                                 <option value="tcp">tcp</option><option value="udp">udp</option>
+                                <option value="tcpmux">tcpmux</option>
                                 <option value="http">http</option><option value="https">https</option>
                                 <option value="stcp">stcp</option><option value="sudp">sudp</option>
                                 <option value="xtcp">xtcp</option>
@@ -1350,6 +1420,7 @@ dashboard_pwd = 改成更复杂的</pre>
                         <label class="chk"><input type="checkbox" id="proxyEnc"><span data-i18n="proxy.enc">加密</span></label>
                         <label class="chk"><input type="checkbox" id="proxyComp"><span data-i18n="proxy.comp">压缩</span></label>
                     </div>
+                    <div id="proxyFormErrors" class="pf-errors" style="display:none"></div>
                     <div class="control-group" style="margin-top:10px;">
                         <button id="proxySaveBtn" class="btn btn-primary" data-i18n="btn.save">保存</button>
                         <button id="proxyCancelBtn" class="btn btn-secondary" data-i18n="btn.cancel">取消</button>
@@ -1407,6 +1478,61 @@ dashboard_pwd = 改成更复杂的</pre>
                     <span class="pm-empty">点击「立即扫描」开始</span>
                 </div>
             </div>
+
+            <div class="section" id="sec-loginharden">
+                <div class="section-head">
+                    <h2 data-i18n="sec.loginharden">登录加固</h2>
+                    <button id="lhSaveBtn" class="btn btn-primary" style="flex:0 0 auto;min-width:auto;max-width:none;padding:7px 14px;" data-i18n="btn.save">保存</button>
+                </div>
+                <p class="hint" data-i18n="lh.intro">在账号密码 + 图形验证码之外，叠加失败限流、IP 白名单、TOTP 动态码，进一步抵御暴力破解与未授权访问。</p>
+
+                <div class="lh-grid">
+                    <div class="lh-card">
+                        <h3 class="sub-h" data-i18n="lh.ratelimit">① 登录失败限流</h3>
+                        <label class="chk"><input type="checkbox" id="lhRateLimit"> <span data-i18n="lh.ratelimit.on">启用失败次数限制（防暴力破解）</span></label>
+                        <div class="lh-params">
+                            <div class="form-group"><label data-i18n="lh.maxfails">最大连续失败次数</label>
+                                <input type="number" id="lhMaxFails" min="1" max="50" value="5"></div>
+                            <div class="form-group"><label data-i18n="lh.window">统计窗口（分钟）</label>
+                                <input type="number" id="lhWindow" min="1" max="240" value="15"></div>
+                            <div class="form-group"><label data-i18n="lh.lock">触发后锁定时长（分钟）</label>
+                                <input type="number" id="lhLock" min="1" max="1440" value="30"></div>
+                        </div>
+                        <p class="hint" data-i18n="lh.ratelimit.hint">同一 IP 在窗口内连续失败达到上限后，将被临时锁定一段时间。</p>
+                    </div>
+
+                    <div class="lh-card">
+                        <h3 class="sub-h" data-i18n="lh.ipwl">② 登录 IP 白名单</h3>
+                        <label class="chk"><input type="checkbox" id="lhIpAllowOn" onchange="document.getElementById('lhIpAllow').disabled=!this.checked"> <span data-i18n="lh.ipwl.on">仅允许名单内的 IP 登录</span></label>
+                        <div class="form-group">
+                            <textarea id="lhIpAllow" disabled placeholder="127.0.0.1&#10;192.168.1.0/24&#10;10.0.0.5"></textarea>
+                        </div>
+                        <p class="hint" data-i18n="lh.ipwl.hint">每行一个 IP 或 CIDR（如 192.168.1.0/24）；留空 = 不限制。误配后可仍访问本页修正。</p>
+                    </div>
+
+                    <div class="lh-card lh-card-totp">
+                        <h3 class="sub-h" data-i18n="lh.totp">③ TOTP 二次验证</h3>
+                        <p class="lh-totp-status" id="lhTotpStatus">—</p>
+                        <div id="lhTotpOff" style="display:none">
+                            <button id="lhTotpSetupBtn" class="btn btn-primary" type="button" data-i18n="lh.totp.gen">生成并启用</button>
+                            <p class="hint" data-i18n="lh.totp.genhint">点击后生成密钥，用 Authenticator 等 App 扫描或手动输入，再填入 6 位动态码确认启用。</p>
+                            <div id="lhTotpSetupBox" style="display:none" class="lh-totp-box">
+                                <label class="fl" data-i18n="lh.totp.secret">密钥（手动输入用）</label>
+                                <div class="secret-box"><code id="lhTotpSecret">—</code><button id="lhTotpCopyBtn" class="btn btn-secondary btn-sm" type="button" data-i18n="btn.copy">复制</button></div>
+                                <label class="fl" data-i18n="lh.totp.uri">otpauth 链接（扫码用）</label>
+                                <div class="secret-box"><code id="lhTotpUri" class="uri">—</code></div>
+                                <div class="form-group"><label data-i18n="lh.totp.code">动态验证码</label>
+                                    <input type="text" id="lhTotpCode" inputmode="numeric" maxlength="6" placeholder="123456"></div>
+                                <button id="lhTotpEnableBtn" class="btn btn-success" type="button" data-i18n="lh.totp.enable">确认启用</button>
+                            </div>
+                        </div>
+                        <div id="lhTotpOn" style="display:none">
+                            <p class="hint" data-i18n="lh.totp.onhint">已启用：每次登录需额外输入 6 位动态码。</p>
+                            <button id="lhTotpDisableBtn" class="btn btn-danger" type="button" data-i18n="lh.totp.disable">关闭 TOTP</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
           </main>
 
 
@@ -1457,7 +1583,7 @@ dashboard_pwd = 改成更复杂的</pre>
                 <div class="section-head">
                     <h2 data-i18n="sec.audit">操作审计</h2>
                     <div class="audit-tools">
-                        <input type="text" id="auditFilter" placeholder="关键字过滤：start / config / 失败 / IP" autocomplete="off">
+                        <input type="text" id="auditFilter" data-kb-filter autocomplete="off" placeholder="关键字过滤：start / config / 失败 / IP">
                         <select id="auditLevel" title="按执行结果筛选">
                             <option value="all">全部结果</option>
                             <option value="success">仅成功</option>
@@ -1483,6 +1609,52 @@ dashboard_pwd = 改成更复杂的</pre>
                     <div class="audit-stat"><b id="auditStatLast">—</b><label>最近一条时间</label></div>
                 </div>
                 <pre id="auditContent" class="log-content audit-box"></pre>
+            </div>
+          </main>
+
+          <main id="pageUpdate" style="display:none">
+            <div class="section" id="sec-update">
+                <div class="section-head">
+                    <h2 data-i18n="sec.update">面板更新</h2>
+                    <div class="update-tools">
+                        <button id="panelCheckUpdateBtn" class="btn btn-primary" type="button" data-i18n="update.checkbtn">检查更新</button>
+                        <button id="panelApplyUpdateBtn" class="btn btn-primary" type="button" data-i18n="update.applybtn" disabled>更新并重启</button>
+                        <button id="panelRollbackUpdateBtn" class="btn btn-secondary" type="button" data-i18n="update.rollback">回滚到上一版本</button>
+                    </div>
+                </div>
+                <p class="hint" data-i18n="update.hint">一键升级面板自身（index.html / main.py 等），更新前自动备份、更新不碰你的配置与已下载的 frp 二进制。</p>
+
+                <div class="update-grid">
+                    <div class="update-card">
+                        <div class="update-row"><label data-i18n="update.current">当前版本</label><b id="panelUpdateCurVer">—</b></div>
+                        <div class="update-row"><label data-i18n="update.latest">最新版本</label><b id="panelUpdateLatest">—</b></div>
+                        <div class="update-row">
+                            <label data-i18n="update.source">更新源</label>
+                            <select id="panelUpdateSourceSel">
+                                <option value="" data-i18n="update.source.official">官方 GitHub（自动下载）</option>
+                                <option value="custom" data-i18n="update.source.custom">自定义 manifest 地址</option>
+                            </select>
+                        </div>
+                        <div class="update-row" id="panelUpdateSourceUrlRow" style="display:none">
+                            <label>manifest URL</label>
+                            <input type="text" id="panelUpdateSourceUrl" placeholder="https://.../update.json" autocomplete="off">
+                            <button id="panelSaveUpdateSourceBtn" class="btn btn-secondary" type="button" data-i18n="update.savesource">保存</button>
+                        </div>
+                    </div>
+                    <div class="update-card update-notes-card">
+                        <div class="update-notes-title" data-i18n="update.changelog">更新日志</div>
+                        <pre id="panelUpdateNotes" class="log-content update-notes">—</pre>
+                    </div>
+                </div>
+
+                <div class="update-progress" id="panelUpdateProgressWrap" style="display:none">
+                    <div class="progress-bar"><div class="progress-fill" id="panelUpdateProgressFill"></div></div>
+                    <span id="panelUpdateProgressText" data-i18n="update.progress">准备中…</span>
+                </div>
+
+                <div id="panelUpdateMsg" class="update-msg"></div>
+                <input type="hidden" id="panelUpdateDownloadUrl" value="">
+                <input type="hidden" id="panelUpdateSha256" value="">
             </div>
           </main>
         </div>
@@ -1713,6 +1885,7 @@ const I18N = {
         'sec.status': '运行状态', 'sec.portmap': '端口映射', 'sec.serverinfo': '服务端连接信息',
         'sec.traffic': '流量监控', 'sec.config': '配置编辑器', 'sec.generator': '配置生成器',
         'sec.bins': 'frp 版本控制', 'sec.web': 'Web 设置', 'sec.security': '配置安全扫描',
+        'dl.target': '目标平台', 'dl.target.current': '当前平台（下载并安装）', 'dl.verify': '下载后校验 SHA256',
         'sec.audit': '操作审计', 'sec.proxies': '代理编辑器', 'sec.templates': '配置模板库',
         'sec.logs': '运行日志', 'sec.watchdog': '进程自愈守护', 'sec.daemon': '守护与告警', 'sub.watchdog': '进程自愈',
         'btn.start': '启动', 'btn.stop': '停止', 'btn.restart': '重启', 'btn.stopall': '全部停止',
@@ -1730,6 +1903,11 @@ const I18N = {
         'proxy.enc': '加密', 'proxy.comp': '压缩', 'proxy.sk': '访问密钥', 'proxy.locations': '路径',
         'proxy.plugin': '插件', 'proxy.pluginaddr': '插件本地地址', 'proxy.role': '角色', 'proxy.servername': '服务端名',
         'proxy.tip': '表单式编辑 frpc 代理条目；保存时序列化为 TOML [[proxies]]，自动覆盖纯文本框配置',
+        'proxy.dup': '复制', 'proxy.preset.add': '套用',
+        'a11y.skip': '跳到主内容', 'kb.title': '键盘快捷键',
+        'kb.help': '打开 / 关闭本帮助', 'kb.focus': '跳到关键字过滤框', 'kb.esc': '关闭表单 / 弹层',
+        'kb.save': '保存当前区块的设置', 'kb.refresh': '刷新当前页面数据',
+        'kb.note': '在输入框内一律不触发这些快捷键。',
         'proxy.empty': '当前没有代理条目，点击「新增代理」添加',
         'tpl.title': '一键套用常见场景模板', 'tpl.desc': '说明', 'tpl.hint': '填写占位符后点「套用模板」，代理会追加到 client 配置末尾',
         'tpl.confirm': '会把生成的代理追加到 client 配置末尾（已有配置不会被删除），确定继续？',
@@ -1751,6 +1929,30 @@ const I18N = {
         'wiz.nameempty': '请填写代理名称', 'wiz.skempty': '请填写预共享密钥 sk', 'wiz.addedtip': '已追加到 client 配置，记得保存使其生效。',
         'sp.role': '角色', 'sp.sk': '预共享密钥 sk', 'sp.servername': 'serverName', 'sp.bindaddr': 'bindAddr', 'sp.bindport': 'bindPort',
         'wiz.add': '添加安全代理',
+        'nav.update': '面板更新', 'sec.update': '面板更新',
+        'update.checkbtn': '检查更新', 'update.applybtn': '更新并重启', 'update.rollback': '回滚到上一版本',
+        'update.savesource': '保存', 'update.current': '当前版本', 'update.latest': '最新版本',
+        'update.source': '更新源', 'update.source.official': '官方 GitHub（自动下载）', 'update.source.custom': '自定义 manifest 地址',
+        'update.changelog': '更新日志', 'update.progress': '准备中…',
+        'sec.loginharden': '登录加固', 'lh.intro': '在账号密码 + 图形验证码之外，叠加失败限流、IP 白名单、TOTP 动态码，进一步抵御暴力破解与未授权访问。',
+        'lh.ratelimit': '① 登录失败限流', 'lh.ratelimit.on': '启用失败次数限制（防暴力破解）',
+        'lh.maxfails': '最大连续失败次数', 'lh.window': '统计窗口（分钟）', 'lh.lock': '触发后锁定时长（分钟）',
+        'lh.ratelimit.hint': '同一 IP 在窗口内连续失败达到上限后，将被临时锁定一段时间。',
+        'lh.ipwl': '② 登录 IP 白名单', 'lh.ipwl.on': '仅允许名单内的 IP 登录',
+        'lh.ipwl.hint': '每行一个 IP 或 CIDR（如 192.168.1.0/24）；留空 = 不限制。误配后仍可访问本页修正。',
+        'lh.totp': '③ TOTP 二次验证', 'lh.totp.gen': '生成并启用', 'lh.totp.genhint': '点击后生成密钥，用 Authenticator 等 App 扫描或手动输入，再填入 6 位动态码确认启用。',
+        'lh.totp.secret': '密钥（手动输入用）', 'lh.totp.uri': 'otpauth 链接（扫码用）', 'lh.totp.code': '动态验证码',
+        'lh.totp.enable': '确认启用', 'lh.totp.disable': '关闭 TOTP',
+        'lh.totp.onhint': '已启用：每次登录需额外输入 6 位动态码。',
+        'lh.totp.status.off': '未启用', 'lh.totp.status.on': '已启用', 'lh.totp.saved': '登录加固设置已保存',
+        'lh.totp.enabled': 'TOTP 二次验证已启用', 'lh.totp.disabled': 'TOTP 二次验证已关闭',
+        'lh.ipwl.enabled': 'IP 白名单已启用',
+        'lh.save': '保存登录加固设置', 'lh.saved': '登录加固设置已保存',
+        'lh.msg.blocked': '失败次数过多，请稍后再试。',
+        'lh.msg.ipdeny': '您的 IP 不在允许名单内，已被拦截。',
+        'lh.msg.saved': '登录加固设置已保存',
+        'lh.msg.ipbad': '条目格式不正确，已忽略：{v}',
+        'update.hint': '一键升级面板自身（index.html / main.py 等），更新前自动备份、更新不碰你的配置与已下载的 frp 二进制。',
     },
     en: {
         'nav.dashboard': 'Status', 'nav.settings': 'Config & Download', 'nav.logs': 'Logs',
@@ -1763,6 +1965,7 @@ const I18N = {
         'sec.status': 'Status', 'sec.portmap': 'Port Mapping', 'sec.serverinfo': 'Server Info',
         'sec.traffic': 'Traffic Monitor', 'sec.config': 'Config Editor', 'sec.generator': 'Config Generator',
         'sec.bins': 'FRP Download', 'sec.web': 'Web Settings', 'sec.security': 'Security Scan',
+        'dl.target': 'Target platform', 'dl.target.current': 'Current platform (download & install)', 'dl.verify': 'Verify SHA256 after download',
         'sec.audit': 'Audit Log', 'sec.proxies': 'Proxy Editor', 'sec.templates': 'Templates',
         'sec.logs': 'Logs', 'sec.watchdog': 'Self-healing Watchdog', 'sec.daemon': 'Guard & Alerts', 'sub.watchdog': 'Self-healing',
         'btn.start': 'Start', 'btn.stop': 'Stop', 'btn.restart': 'Restart', 'btn.stopall': 'Stop All',
@@ -1780,6 +1983,11 @@ const I18N = {
         'proxy.enc': 'Encrypt', 'proxy.comp': 'Compress', 'proxy.sk': 'Secret Key', 'proxy.locations': 'Locations',
         'proxy.plugin': 'Plugin', 'proxy.pluginaddr': 'Plugin Addr', 'proxy.role': 'Role', 'proxy.servername': 'Server Name',
         'proxy.tip': 'Form-based proxy editor; saving serializes to TOML [[proxies]] and overwrites the raw text config',
+        'proxy.dup': 'Duplicate', 'proxy.preset.add': 'Apply',
+        'a11y.skip': 'Skip to main content', 'kb.title': 'Keyboard shortcuts',
+        'kb.help': 'Show / hide this help', 'kb.focus': 'Focus the keyword filter', 'kb.esc': 'Close forms and dialogs',
+        'kb.save': 'Save the current section', 'kb.refresh': 'Refresh current page data',
+        'kb.note': 'These shortcuts are disabled while typing in an input.',
         'proxy.empty': 'No proxies yet, click "Add Proxy"',
         'tpl.title': 'Apply common scenario templates', 'tpl.desc': 'Desc', 'tpl.hint': 'Fill placeholders then click Apply; proxies are appended to client config',
         'tpl.confirm': 'This appends the generated proxy to the end of client config (existing content is kept). Continue?',
@@ -1801,6 +2009,43 @@ const I18N = {
         'wiz.nameempty': 'Proxy name required', 'wiz.skempty': 'Shared secret sk required', 'wiz.addedtip': 'Appended to client config; save to take effect.',
         'sp.role': 'Role', 'sp.sk': 'Shared Secret sk', 'sp.servername': 'serverName', 'sp.bindaddr': 'bindAddr', 'sp.bindport': 'bindPort',
         'wiz.add': 'Add Secure Proxy',
+        'nav.update': 'Panel Update', 'sec.update': 'Panel Update',
+        'update.checkbtn': 'Check Update', 'update.applybtn': 'Update & Restart', 'update.rollback': 'Rollback to Previous',
+        'update.savesource': 'Save', 'update.current': 'Current', 'update.latest': 'Latest',
+        'update.source': 'Update Source', 'update.source.official': 'Official GitHub (auto download)', 'update.source.custom': 'Custom manifest URL',
+        'update.changelog': 'Changelog', 'update.progress': 'Preparing…',
+        'update.hint': 'Upgrade the panel itself (index.html / main.py, etc.) in one click. Current version is auto-backed-up before applying; your config and downloaded frp binaries are never touched.',
+
+        'sec.loginharden': 'Login Hardening',
+        'lh.intro': 'On top of username/password and the captcha, add failure rate-limiting, an IP allowlist and TOTP to further resist brute force and unauthorized access.',
+
+        'lh.ratelimit': '① Brute-force rate limiting',
+        'lh.ratelimit.on': 'Enable failure limit (anti brute-force)',
+        'lh.ratelimit.hint': 'Once an IP hits the limit within the window, it is blocked for the lock duration.',
+        'lh.maxfails': 'Max consecutive failures',
+        'lh.window': 'Statistics window (minutes)', 'lh.lock': 'Lock duration after trigger (minutes)',
+
+        'lh.ipwl': '② Login IP allowlist',
+        'lh.ipwl.on': 'Only allow listed IPs to log in',
+        'lh.ipwl.hint': 'One IP or CIDR per line (e.g. 192.168.1.0/24); empty = no restriction. The security page stays reachable so you can fix a wrong entry.',
+        'lh.ipwl.enabled': 'IP allowlist enabled',
+
+        'lh.save': 'Save hardening settings',
+        'lh.saved': 'Login hardening settings saved',
+        'lh.msg.blocked': 'Too many failed attempts, please try again later.',
+        'lh.msg.ipdeny': 'Your IP is not on the allowlist and has been blocked.',
+        'lh.msg.saved': 'Login hardening settings saved',
+        'lh.msg.ipbad': 'Malformed entry, ignored: {v}',
+
+        'lh.totp': '③ TOTP two-factor', 'lh.totp.gen': 'Generate & enable',
+        'lh.totp.genhint': 'A secret will be generated; scan it with an Authenticator app (or paste it manually), then confirm with the 6-digit code.',
+        'lh.totp.secret': 'Secret (for manual entry)', 'lh.totp.uri': 'otpauth URI (for scanning)',
+        'lh.totp.code': 'Verification code', 'lh.totp.code.ph': '6 digits', 'lh.totp.err': 'Code incorrect, please retry.',
+        'lh.totp.enable': 'Confirm & enable', 'lh.totp.disable': 'Turn off TOTP',
+        'lh.totp.onhint': 'Enabled: a 6-digit code is now required on every login.',
+        'lh.totp.status.off': 'Disabled', 'lh.totp.status.on': 'Enabled',
+        'lh.totp.saved': 'Login hardening settings saved',
+        'lh.totp.enabled': 'TOTP enabled', 'lh.totp.disabled': 'TOTP disabled',
     }
 };
 let CURRENT_LANG = 'zh';
@@ -2248,8 +2493,73 @@ class FRPManagerUI {
         this.initTheme();
         // 启动即恢复语言偏好（localStorage + 服务器持久化）
         this.loadI18n();
+        this.initPWA();
+        this.initShortcuts();
         // 首屏只加载当前页需要的数据，其余等切页时再拉（显著减少启动请求数）
         this.enterCurrentPage();
+    }
+
+    // ========== 键盘快捷键（v1.15.0）==========
+    // ? 帮助 / 焦点过滤框 / Esc 关弹层 / Ctrl+S 保存 / Ctrl+D 刷新
+    initShortcuts() {
+        const box = document.getElementById('kbHelp');
+        const closeBtn = box ? box.querySelector('.kb-close') : null;
+        if (closeBtn) closeBtn.addEventListener('click', () => this.toggleKbHelp(false));
+
+        document.addEventListener('keydown', (ev) => {
+            const t = ev.target;
+            const inField = t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA'
+                                  || t.tagName === 'SELECT' || t.isContentEditable);
+            const mod = ev.ctrlKey || ev.metaKey;
+
+            if (ev.key === 'Escape') {
+                if (box && box.style.display !== 'none') { this.toggleKbHelp(false); return; }
+                if (this.proxyForm && this.proxyForm.style.display !== 'none' && !inField) {
+                    this.hideProxyForm();
+                }
+                return;
+            }
+            if (mod && (ev.key === 's' || ev.key === 'S')) {
+                // 页面 → 主保存按钮。必须写死 id：早先用「区块里第一个 button[id$=Btn]」，
+                // 在「配置与下载」页会命中 #loadBtn（加载配置），Ctrl+S 变成「读文件」而非保存。
+                const SAVE_BTN = {settings: '#saveBtn', system: '#savePortBtn',
+                                  security: '#lhSaveBtn'};
+                const btn = document.querySelector(SAVE_BTN[document.body.getAttribute('data-curpage')] || '');
+                if (btn && btn.offsetParent !== null) { ev.preventDefault(); btn.click(); }
+                return;
+            }
+            if (mod && (ev.key === 'd' || ev.key === 'D')) {
+                ev.preventDefault();
+                const page = document.body.getAttribute('data-curpage');
+                if (page === 'logs') this.loadLog();
+                else if (page === 'audit') this.loadAudit(true);
+                else this.enterCurrentPage();
+                return;
+            }
+            if (inField || mod || ev.altKey) return;   // 输入框内不抢键
+            if (ev.key === '?') { ev.preventDefault(); this.toggleKbHelp(); }
+            else if (ev.key === '/') {
+                // 通用：焦点送到当前页面上带 data-kb-filter 的过滤框（审计页的 #auditFilter 也认）
+                const cur = document.body.getAttribute('data-curpage');
+                const pid = cur && PAGES[cur];
+                const scope = pid ? document.getElementById(pid) : null;
+                const box = (scope && scope.querySelector('[data-kb-filter]'))
+                            || (cur === 'audit' && this.auditFilter ? this.auditFilter : null);
+                if (box && box.offsetParent !== null) {
+                    ev.preventDefault();
+                    box.focus();
+                    if (box.select) box.select();
+                }
+            }
+        });
+    }
+
+    toggleKbHelp(show) {
+        const box = document.getElementById('kbHelp');
+        if (!box) return;
+        const want = (show === undefined) ? (box.style.display === 'none') : !!show;
+        box.style.display = want ? '' : 'none';
+        if (want) { const b = box.querySelector('.kb-close'); if (b) b.focus(); }
     }
 
     // ========== 按页懒加载（每页数据只在首次进入时请求一次）==========
@@ -2282,6 +2592,7 @@ class FRPManagerUI {
     }
     // 安全中心：安全向导 / 配置安全扫描（扫描按需手动触发，不自动跑）
     enterSecurity() {
+        this._once('lharden', () => this.loadLoginHarden());
         this._once('security', () => { /* 安全扫描需用户点「立即扫描」 */ });
     }
     enterCurrentPage() {
@@ -2292,7 +2603,143 @@ class FRPManagerUI {
         else if (name === 'system') this.enterSystem();
         else if (name === 'settings') this.enterSettings();
         else if (name === 'security') this.enterSecurity();
+        else if (name === 'update') this.enterUpdate();
         else this.enterDashboard();
+    }
+
+    // 面板更新（v1.14.0）：仅进页时拉一次当前版本与更新源
+    enterUpdate() {
+        this._once('updateInfo', () => this.loadUpdate());
+    }
+
+    // ========== 登录加固（v1.15.0）：失败限流 / IP 白名单 / TOTP ==========
+    toggleLhRateParams() {
+        if (!this.lhRateLimit) return;
+        const card = this.lhRateLimit.closest('.lh-card');
+        if (!card) return;
+        const box = card.querySelector('.lh-params');
+        if (box) box.style.opacity = this.lhRateLimit.checked ? '1' : '.45';
+    }
+
+    renderTotpState(enabled) {
+        if (this.lhTotpOff) this.lhTotpOff.style.display = enabled ? 'none' : '';
+        if (this.lhTotpOn) this.lhTotpOn.style.display = enabled ? '' : 'none';
+        if (this.lhTotpStatus) this.lhTotpStatus.textContent = enabled ? t('lh.totp.status.on') : t('lh.totp.status.off');
+        if (this.lhTotpSetupBox) this.lhTotpSetupBox.style.display = 'none';
+        if (this.lhTotpCode) this.lhTotpCode.value = '';
+    }
+
+    async loadLoginHarden() {
+        if (!this.lhRateLimit) return;
+        try {
+            const resp = await fetch('/api/auth/security');
+            if (resp.status === 401) return;
+            const d = await resp.json();
+            if (!d.success) return;
+            this.lhRateLimit.checked = !!d.login_rate_limit;
+            if (this.lhMaxFails) this.lhMaxFails.value = d.max_fails || 5;
+            if (this.lhWindow) this.lhWindow.value = d.fail_window_min || 15;
+            if (this.lhLock) this.lhLock.value = d.lock_min || 30;
+            const on = !!String(d.ip_allowlist || '').trim();
+            if (this.lhIpAllow) {
+                this.lhIpAllow.value = String(d.ip_allowlist || '').split(',').map(s => s.trim()).filter(Boolean).join('\n');
+                this.lhIpAllow.disabled = !on;
+            }
+            if (this.lhIpAllowOn) this.lhIpAllowOn.checked = on;
+            if (this.lhTotpSetupBtn) this.lhTotpSetupBtn.disabled = false;
+            this.renderTotpState(!!d.totp_enabled);
+        } catch (e) { /* 登录保护关闭时该端点不可达，忽略 */ }
+    }
+
+    async saveLoginHarden() {
+        if (!this.lhSaveBtn) return;
+        const allowRaw = this.lhIpAllow ? String(this.lhIpAllow.value || '') : '';
+        const body = {
+            login_rate_limit: this.lhRateLimit ? this.lhRateLimit.checked : false,
+            max_fails: this.lhMaxFails ? this.lhMaxFails.value : 5,
+            fail_window_min: this.lhWindow ? this.lhWindow.value : 15,
+            lock_min: this.lhLock ? this.lhLock.value : 30,
+            ip_allowlist: allowRaw
+        };
+        try {
+            const resp = await fetch('/api/auth/security', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(body)
+            });
+            const d = await resp.json();
+            this.showMessage(d.message || (d.success ? t('lh.saved') : t('保存失败', 'Save failed')),
+                             d.success ? 'success' : 'error');
+            if (d.success) this.loadLoginHarden();
+        } catch (e) {
+            this.showMessage(t('保存失败', 'Save failed'), 'error');
+        }
+    }
+
+    async openTotpSetup() {
+        if (!this.lhTotpSetupBtn) return;
+        this.lhTotpSetupBtn.disabled = true;
+        this.lhTotpSetupBtn.textContent = tt('生成中…', 'Generating…');
+        try {
+            const resp = await fetch('/api/auth/totp/setup');
+            const d = await resp.json();
+            if (!d.success) throw new Error('gen-failed');
+            if (this.lhTotpSecret) this.lhTotpSecret.textContent = d.secret || '';
+            if (this.lhTotpUri) this.lhTotpUri.textContent = d.uri || '';
+            if (this.lhTotpCode) this.lhTotpCode.value = '';
+            if (this.lhTotpSetupBox) this.lhTotpSetupBox.style.display = '';
+            if (this.lhTotpSetupBtn) this.lhTotpSetupBtn.textContent = t('lh.totp.gen');
+        } catch (e) {
+            this.showMessage(tt('生成密钥失败', 'Failed to generate secret'), 'error');
+        } finally {
+            if (this.lhTotpSetupBtn) this.lhTotpSetupBtn.disabled = false;
+        }
+    }
+
+    async confirmTotpEnable() {
+        if (!this.lhTotpEnableBtn) return;
+        const secret = this.lhTotpSecret ? String(this.lhTotpSecret.textContent || '').trim() : '';
+        const code = this.lhTotpCode ? String(this.lhTotpCode.value || '').trim() : '';
+        if (!secret || !code) { this.showMessage(t('lh.totp.err'), 'error'); return; }
+        this.lhTotpEnableBtn.disabled = true;
+        try {
+            const resp = await fetch('/api/auth/totp/enable', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({secret: secret, code: code})
+            });
+            const d = await resp.json();
+            this.showMessage(d.message || (d.success ? t('lh.totp.enabled') : t('启用失败', 'Failed to enable')),
+                             d.success ? 'success' : 'error');
+            if (d.success) this.loadLoginHarden();
+        } catch (e) {
+            this.showMessage(t('启用失败', 'Failed to enable'), 'error');
+        } finally {
+            this.lhTotpEnableBtn.disabled = false;
+        }
+    }
+
+    async disableTotp() {
+        if (!confirm(tt('关闭后登录不再需要动态验证码，确定关闭吗？', 'After turning this off, codes are no longer required. Continue?'))) return;
+        try {
+            const resp = await fetch('/api/auth/totp/disable', {method: 'POST'});
+            const d = await resp.json();
+            this.showMessage(d.message || (d.success ? t('lh.totp.disabled') : ''), d.success ? 'success' : 'error');
+            if (d.success) this.loadLoginHarden();
+        } catch (e) {
+            this.showMessage(tt('关闭失败', 'Failed to disable'), 'error');
+        }
+    }
+
+    copyTotpSecret() {
+        const s = this.lhTotpSecret ? String(this.lhTotpSecret.textContent || '').trim() : '';
+        if (!s) return;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(s).then(() => this.showMessage(tt('已复制密钥', 'Secret copied'), 'success'))
+                .catch(() => this.showMessage(tt('复制失败，请手动选中复制', 'Copy failed; please select and copy manually'), 'error'));
+        } else {
+            this.showMessage(tt('请手动选中密钥复制', 'Please select and copy the secret manually'), 'error');
+        }
     }
 
     // ========== 登录认证（账号密码 / 图形验证码开关）==========
@@ -2345,6 +2792,17 @@ class FRPManagerUI {
             this.loadAuthConfig();
         } catch (e) {
             this.showMessage(tt('保存认证设置失败', 'Failed to save auth settings'), 'error');
+        }
+    }
+
+    // ========== PWA（v1.15.0）==========
+    initPWA() {
+        if (!('serviceWorker' in navigator)) return;   // IE / 老浏览器直接跳过
+        // 局域网 http 下 Service Worker 会被浏览器直接拒绝，这里静默降级，不打扰用户
+        const register = () => navigator.serviceWorker.register('/sw.js').catch(() => {});
+        if (location.protocol === 'https:' || location.hostname === 'localhost'
+            || location.hostname === '127.0.0.1') {
+            window.addEventListener('load', register);
         }
     }
 
@@ -2450,6 +2908,10 @@ class FRPManagerUI {
 
         // 二进制 / 更新 / 版本切换
         this.checkUpdateBtn = document.getElementById('checkUpdateBtn');
+        // 分化下载 / 校验（v1.15.0）
+        this.dlTarget = document.getElementById('dlTarget');
+        this.dlVerify = document.getElementById('dlVerify');
+        this.dlSha = document.getElementById('dlSha');
         this.frpcVerSel = document.getElementById('frpcVerSel');
         this.frpsVerSel = document.getElementById('frpsVerSel');
         this.switchVerBtn = document.getElementById('switchVerBtn');
@@ -2540,6 +3002,25 @@ class FRPManagerUI {
         // 配置安全扫描
         this.scanSecurityBtn = document.getElementById('scanSecurityBtn');
         this.securityResult = document.getElementById('securityResult');
+        // 登录加固（v1.15.0）
+        this.lhRateLimit = document.getElementById('lhRateLimit');
+        this.lhMaxFails = document.getElementById('lhMaxFails');
+        this.lhWindow = document.getElementById('lhWindow');
+        this.lhLock = document.getElementById('lhLock');
+        this.lhIpAllowOn = document.getElementById('lhIpAllowOn');
+        this.lhIpAllow = document.getElementById('lhIpAllow');
+        this.lhSaveBtn = document.getElementById('lhSaveBtn');
+        this.lhTotpStatus = document.getElementById('lhTotpStatus');
+        this.lhTotpOff = document.getElementById('lhTotpOff');
+        this.lhTotpOn = document.getElementById('lhTotpOn');
+        this.lhTotpSetupBtn = document.getElementById('lhTotpSetupBtn');
+        this.lhTotpSetupBox = document.getElementById('lhTotpSetupBox');
+        this.lhTotpSecret = document.getElementById('lhTotpSecret');
+        this.lhTotpUri = document.getElementById('lhTotpUri');
+        this.lhTotpCode = document.getElementById('lhTotpCode');
+        this.lhTotpEnableBtn = document.getElementById('lhTotpEnableBtn');
+        this.lhTotpDisableBtn = document.getElementById('lhTotpDisableBtn');
+        this.lhTotpCopyBtn = document.getElementById('lhTotpCopyBtn');
         // 操作审计（独立页面）
         this.auditContent = document.getElementById('auditContent');
         this.auditLines = document.getElementById('auditLines');
@@ -2567,6 +3048,8 @@ class FRPManagerUI {
         this.proxyAddBtn = document.getElementById('proxyAddBtn');
         this.proxyReloadBtn = document.getElementById('proxyReloadBtn');
         this.proxyListBody = document.getElementById('proxyListBody');
+        this.proxyPresetSel = document.getElementById('proxyPresetSel');
+        this.proxyPresetBtn = document.getElementById('proxyPresetBtn');
         this.proxyForm = document.getElementById('proxyForm');
         this.proxyEditIndex = document.getElementById('proxyEditIndex');
         this.proxyName = document.getElementById('proxyName');
@@ -2614,6 +3097,23 @@ class FRPManagerUI {
         this.spBindPort = document.getElementById('spBindPort');
         this.addSecureBtn = document.getElementById('addSecureBtn');
         this.secureNote = document.getElementById('secureNote');
+        // 面板自更新（v1.14.0）
+        this.panelCheckUpdateBtn = document.getElementById('panelCheckUpdateBtn');
+        this.panelApplyUpdateBtn = document.getElementById('panelApplyUpdateBtn');
+        this.panelRollbackUpdateBtn = document.getElementById('panelRollbackUpdateBtn');
+        this.panelUpdateSourceSel = document.getElementById('panelUpdateSourceSel');
+        this.panelUpdateSourceUrlRow = document.getElementById('panelUpdateSourceUrlRow');
+        this.panelUpdateSourceUrl = document.getElementById('panelUpdateSourceUrl');
+        this.panelSaveUpdateSourceBtn = document.getElementById('panelSaveUpdateSourceBtn');
+        this.panelUpdateCurVer = document.getElementById('panelUpdateCurVer');
+        this.panelUpdateLatest = document.getElementById('panelUpdateLatest');
+        this.panelUpdateNotes = document.getElementById('panelUpdateNotes');
+        this.panelUpdateProgressWrap = document.getElementById('panelUpdateProgressWrap');
+        this.panelUpdateProgressFill = document.getElementById('panelUpdateProgressFill');
+        this.panelUpdateProgressText = document.getElementById('panelUpdateProgressText');
+        this.panelUpdateMsg = document.getElementById('panelUpdateMsg');
+        this.panelUpdateDownloadUrl = document.getElementById('panelUpdateDownloadUrl');
+        this.panelUpdateSha256 = document.getElementById('panelUpdateSha256');
     }
     
     initEventListeners() {
@@ -2733,6 +3233,7 @@ class FRPManagerUI {
         if (this.proxyReloadBtn) this.proxyReloadBtn.addEventListener('click', () => this.loadProxies());
         if (this.proxySaveBtn) this.proxySaveBtn.addEventListener('click', () => this.saveProxy());
         if (this.proxyCancelBtn) this.proxyCancelBtn.addEventListener('click', () => this.hideProxyForm());
+        if (this.proxyPresetSel) this.proxyPresetSel.addEventListener('change', () => { if (this.proxyPresetBtn) this.proxyPresetBtn.click(); });
         if (this.proxyType) this.proxyType.addEventListener('change', () => this.applyProxyTypeFields());
         if (this.proxyListBody) {
             // 行内「编辑 / 删除」用事件委托（原实现没有任何监听，点了没反应）
@@ -2744,6 +3245,24 @@ class FRPManagerUI {
                 const act = btn.getAttribute('data-act');
                 if (act === 'edit') this.showProxyForm(i);
                 else if (act === 'del') this.deleteProxy(i);
+                else if (act === 'dup') this.duplicateProxy(i);
+            });
+        }
+        // 行内实时校验：输入/切换即标红，不点保存也知道哪里不对
+        if (this.proxyForm) {
+            const live = (ev) => {
+                const el = ev.target;
+                if (el && el.closest && el.closest('.pf')) this.validateProxyForm();
+            };
+            this.proxyForm.addEventListener('input', live);
+            this.proxyForm.addEventListener('change', live);
+        }
+        if (this.proxyPresetBtn) {
+            this.proxyPresetBtn.addEventListener('click', () => {
+                const sel = this.proxyPresetSel;
+                const kind = sel ? sel.value : '';
+                if (!kind) { this.showMessage(tt('请先在左侧选择要添加的预设', 'Pick a preset from the list first'), 'warning'); return; }
+                this.applyProxyPreset(kind);
             });
         }
 
@@ -2802,6 +3321,14 @@ class FRPManagerUI {
         if (this.testAlertBtn) this.testAlertBtn.addEventListener('click', () => this.testAlert());
         if (this.importBtn) this.importBtn.addEventListener('click', () => this.importFrp());
         if (this.scanSecurityBtn) this.scanSecurityBtn.addEventListener('click', () => this.scanSecurity());
+        // ===== 登录加固事件（v1.15.0）=====
+        if (this.lhSaveBtn) this.lhSaveBtn.addEventListener('click', () => this.saveLoginHarden());
+        if (this.lhRateLimit) this.lhRateLimit.addEventListener('change', () => this.toggleLhRateParams());
+        if (this.lhIpAllowOn) this.lhIpAllowOn.addEventListener('change', () => { if (this.lhIpAllow) this.lhIpAllow.disabled = !this.lhIpAllowOn.checked; });
+        if (this.lhTotpSetupBtn) this.lhTotpSetupBtn.addEventListener('click', () => this.openTotpSetup());
+        if (this.lhTotpEnableBtn) this.lhTotpEnableBtn.addEventListener('click', () => this.confirmTotpEnable());
+        if (this.lhTotpDisableBtn) this.lhTotpDisableBtn.addEventListener('click', () => this.disableTotp());
+        if (this.lhTotpCopyBtn) this.lhTotpCopyBtn.addEventListener('click', () => this.copyTotpSecret());
         if (this.refreshAuditBtn) this.refreshAuditBtn.addEventListener('click', () => this.loadAudit(true));
         if (this.auditLines) this.auditLines.addEventListener('change', () => this.loadAudit(true));
         if (this.auditLevel) this.auditLevel.addEventListener('change', () => this.renderAudit());
@@ -2815,6 +3342,20 @@ class FRPManagerUI {
         }
         if (this.rotateLogBtn) this.rotateLogBtn.addEventListener('click', () => this.rotateLog());
         if (this.downloadLogBtn) this.downloadLogBtn.addEventListener('click', () => this.downloadLog());
+
+        // ===== 面板自更新（v1.14.0）=====
+        if (this.panelCheckUpdateBtn) this.panelCheckUpdateBtn.addEventListener('click', () => this.checkUpdate());
+        if (this.panelApplyUpdateBtn) this.panelApplyUpdateBtn.addEventListener('click', () => this.applyUpdate());
+        if (this.panelRollbackUpdateBtn) this.panelRollbackUpdateBtn.addEventListener('click', () => this.rollbackUpdate());
+        if (this.panelSaveUpdateSourceBtn) this.panelSaveUpdateSourceBtn.addEventListener('click', () => this.saveUpdateSource());
+        if (this.panelUpdateSourceSel) this.panelUpdateSourceSel.addEventListener('change', () => {
+            if (this.panelUpdateSourceSel.value === 'custom') {
+                this.panelUpdateSourceUrlRow.style.display = 'flex';
+            } else {
+                this.panelUpdateSourceUrlRow.style.display = 'none';
+                this.saveUpdateSource();   // 切回官方源即时保存
+            }
+        });
 
         // 定期刷新日志（仅在日志页可见时请求，减少无谓开销）
         // 定时刷新：仅在页面可见、且相应页面处于前台时才请求，避免无谓开销
@@ -3233,13 +3774,21 @@ class FRPManagerUI {
             return;
         }
         const mirror = this.dlMirror ? this.dlMirror.value : 'auto';
+        const target = this.dlTarget ? this.dlTarget.value : '';
+        const verify = this.dlVerify ? this.dlVerify.checked : true;
+        if (target && !confirm(tt('将只下载该平台对应的官方包，不会安装到本地（适合准备跨设备部署）。\n继续？', 'The official package for the selected platform will be downloaded only, without installing it locally (useful for preparing cross-device deployment).\nContinue?'))) {
+            return;
+        }
         this.showMessage(tt('已开始下载 FRP（后台进行中）...', 'Started downloading FRP (running in background)...'), 'info');
         if (this.downloadFrpBtn) this.downloadFrpBtn.disabled = true;
         try {
             const response = await fetch('/api/download-frp', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
-                body: `mirror=${encodeURIComponent(mirror)}`
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    mirror: mirror, target: target, verify: verify,
+                    version: this.versionSel ? this.versionSel.value : ''
+                })
             });
             const data = await response.json();
             if (!data.success) {
@@ -3256,9 +3805,13 @@ class FRPManagerUI {
 
     _startDlPoll() {
         if (this.dlProgressWrap) this.dlProgressWrap.style.display = '';
+        if (this.dlSha) this.dlSha.style.display = 'none';
         const phaseText = {
-            starting: tt("准备中", "Preparing"), resolving: tt("解析版本", "Resolving version"), downloading: tt("下载中", "Downloading"),
-            extracting: tt("解压中", "Extracting"), installing: tt("安装中", "Installing"), done: tt("完成", "Done"), failed: tt("失败", "Failed")
+            starting: tt("准备中", "Preparing"), resolving: tt("解析版本", "Resolving version"),
+            checksum: tt("获取校验值", "Fetching checksums"), downloading: tt("下载中", "Downloading"),
+            verified: tt("SHA256 校验通过", "SHA256 verified"),
+            extracting: tt("解压中", "Extracting"), installing: tt("安装中", "Installing"),
+            done: tt("完成", "Done"), failed: tt("失败", "Failed")
         };
         const tick = async () => {
             try {
@@ -3274,6 +3827,20 @@ class FRPManagerUI {
                 }
                 if (d.finished) {
                     if (this.downloadFrpBtn) this.downloadFrpBtn.disabled = false;
+                    const sha = d.extra || {};
+                    if (this.dlSha) {
+                        if (sha.verified && sha.sha256) {
+                            this.dlSha.style.display = '';
+                            this.dlSha.className = 'dl-sha ok';
+                            this.dlSha.textContent = 'SHA256 ' + sha.sha256;
+                        } else if (d.ok) {
+                            this.dlSha.style.display = '';
+                            this.dlSha.className = 'dl-sha';
+                            this.dlSha.textContent = tt('未做 SHA256 校验', 'SHA256 check skipped');
+                        } else {
+                            this.dlSha.style.display = 'none';
+                        }
+                    }
                     this.showMessage(d.ok ? (d.message || tt("FRP 下载完成", "FRP download complete"))
                                           : (d.message || tt("FRP 下载失败", "FRP download failed")),
                                     d.ok ? 'success' : 'error');
@@ -4041,6 +4608,113 @@ class FRPManagerUI {
         } catch (e) { this.showMessage(tt('保存自愈设置失败', 'Failed to save self-healing settings'), 'error'); }
     }
 
+    // ========== v1.14.0：面板自更新 ==========
+    showUpdateMsg(text, type) {
+        if (!this.panelUpdateMsg) return;
+        this.panelUpdateMsg.textContent = text;
+        this.panelUpdateMsg.className = 'update-msg ' + (type || 'info');
+    }
+    setUpdateProgress(pct, text) {
+        if (this.panelUpdateProgressWrap) this.panelUpdateProgressWrap.style.display = 'flex';
+        if (this.panelUpdateProgressFill) this.panelUpdateProgressFill.style.width = Math.max(0, Math.min(100, pct)) + '%';
+        if (this.panelUpdateProgressText && text) this.panelUpdateProgressText.textContent = text;
+    }
+    async loadUpdate() {
+        try {
+            const info = await (await fetch('/api/info')).json();
+            if (this.panelUpdateCurVer) this.panelUpdateCurVer.textContent = 'v' + (info.app_version || '?');
+            const src = await (await fetch('/api/update/source')).json();
+            if (src.success && src.source) {
+                if (this.panelUpdateSourceSel) this.panelUpdateSourceSel.value = 'custom';
+                if (this.panelUpdateSourceUrl) this.panelUpdateSourceUrl.value = src.source;
+                if (this.panelUpdateSourceUrlRow) this.panelUpdateSourceUrlRow.style.display = 'flex';
+            }
+            this.showUpdateMsg(tt('当前版本已就绪，点「检查更新」获取最新版本。',
+                                  'Current version ready; click "Check update" to look for newer versions.'), 'info');
+        } catch (e) { console.error(e); }
+    }
+    async checkUpdate() {
+        if (!this.panelCheckUpdateBtn) return;
+        this.panelCheckUpdateBtn.disabled = true;
+        this.showUpdateMsg(tt('正在查询更新源…', 'Querying update source…'), 'info');
+        try {
+            const d = await (await fetch('/api/update/check')).json();
+            if (!d.success) throw new Error(d.message || 'check failed');
+            this.panelUpdateLatest.textContent = d.latest ? ('v' + d.latest) : '—';
+            this.panelUpdateNotes.textContent = d.notes || (d.error ? d.error : tt('暂无更新日志', 'No changelog'));
+            this.panelUpdateDownloadUrl.value = d.url || '';
+            this.panelUpdateSha256.value = d.sha256 || '';
+            if (d.has_update) {
+                this.panelApplyUpdateBtn.disabled = false;
+                this.showUpdateMsg(tt('发现新版本 v' + d.latest + '，可更新并重启。',
+                                      'New version v' + d.latest + ' available; you can update and restart.'), 'ok');
+            } else if (d.error) {
+                this.panelApplyUpdateBtn.disabled = true;
+                this.showUpdateMsg(tt('检查更新出错：' + d.error, 'Update check error: ' + d.error), 'err');
+            } else {
+                this.panelApplyUpdateBtn.disabled = true;
+                this.showUpdateMsg(tt('已是最新版本。', 'Already up to date.'), 'ok');
+            }
+        } catch (e) {
+            this.panelApplyUpdateBtn.disabled = true;
+            this.showUpdateMsg(tt('检查更新失败：' + e.message, 'Update check failed: ' + e.message), 'err');
+        } finally {
+            this.panelCheckUpdateBtn.disabled = false;
+        }
+    }
+    async applyUpdate() {
+        const url = this.panelUpdateDownloadUrl.value || '';
+        if (!url) {
+            this.showUpdateMsg(tt('请先点「检查更新」获取下载地址。', 'Click "Check update" first to get a download URL.'), 'err');
+            return;
+        }
+        if (!confirm(tt('确定要更新并重启面板吗？更新前会自动备份当前版本。',
+                       'Update and restart the panel? Current version will be backed up first.'))) return;
+        this.panelApplyUpdateBtn.disabled = true;
+        this.panelCheckUpdateBtn.disabled = true;
+        this.setUpdateProgress(10, tt('已提交更新任务…', 'Update task submitted…'));
+        this.showUpdateMsg(tt('更新中，完成后会自动重启，请稍候…',
+                              'Updating; the panel will restart automatically when done…'), 'info');
+        try {
+            const r = await (await fetch('/api/update/apply', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ url: url, sha256: this.panelUpdateSha256.value || null })
+            })).json();
+            if (!r.success) throw new Error(r.message || 'apply failed');
+            this.setUpdateProgress(30, tt('下载并应用更新中…', 'Downloading and applying update…'));
+        } catch (e) {
+            this.panelApplyUpdateBtn.disabled = false;
+            this.panelCheckUpdateBtn.disabled = false;
+            this.showUpdateMsg(tt('更新启动失败：' + e.message, 'Failed to start update: ' + e.message), 'err');
+        }
+    }
+    async rollbackUpdate() {
+        if (!confirm(tt('确定要回滚到上一版本备份吗？将自动重启面板。',
+                       'Roll back to the previous backup? The panel will restart automatically.'))) return;
+        this.panelRollbackUpdateBtn.disabled = true;
+        this.showUpdateMsg(tt('正在回滚…', 'Rolling back…'), 'info');
+        try {
+            const r = await (await fetch('/api/update/rollback', { method: 'POST' })).json();
+            if (!r.success) throw new Error(r.message || 'rollback failed');
+        } catch (e) {
+            this.panelRollbackUpdateBtn.disabled = false;
+            this.showUpdateMsg(tt('回滚启动失败：' + e.message, 'Failed to start rollback: ' + e.message), 'err');
+        }
+    }
+    async saveUpdateSource() {
+        const src = (this.panelUpdateSourceSel.value === 'custom') ? (this.panelUpdateSourceUrl.value || '') : '';
+        try {
+            await fetch('/api/update/source', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ source: src })
+            });
+            if (this.panelUpdateSourceSel.value === 'custom')
+                this.showUpdateMsg(tt('已保存自定义更新源。', 'Custom update source saved.'), 'ok');
+        } catch (e) {
+            this.showUpdateMsg(tt('保存更新源失败：' + e.message, 'Failed to save update source: ' + e.message), 'err');
+        }
+    }
+
     // ========== v1.13.0：定时重启设置 ==========
     fmtTs(ts) {
         if (!ts) return '';
@@ -4727,6 +5401,7 @@ class FRPManagerUI {
                 + '<td>' + this.escHtml(rport === '' ? '-' : rport) + '</td>'
                 + '<td class="proxy-ops">'
                 + '<button class="btn btn-sm btn-primary" type="button" data-act="edit" data-i="' + i + '">' + this.escHtml(t('btn.edit')) + '</button>'
+                + '<button class="btn btn-sm" type="button" data-act="dup" data-i="' + i + '" title="' + this.escHtml(t('proxy.dup')) + '">' + this.escHtml(t('proxy.dup')) + '</button>'
                 + '<button class="btn btn-sm btn-danger" type="button" data-act="del" data-i="' + i + '">' + this.escHtml(t('btn.delete')) + '</button>'
                 + '</td></tr>';
         }).join('');
@@ -4743,7 +5418,8 @@ class FRPManagerUI {
         const isTcpUdp = (ty === 'tcp' || ty === 'udp');
         const isHttp = (ty === 'http' || ty === 'https');
         const isP2P = (ty === 'stcp' || ty === 'sudp' || ty === 'xtcp');
-        show(this.proxyRemotePort, isTcpUdp);
+        const isMux = (ty === 'tcpmux');
+        show(this.proxyRemotePort, isTcpUdp || isMux);
         show(this.proxySubdomain, isHttp);
         show(this.proxyCustomDomains, isHttp);
         show(this.proxyLocations, isHttp);
@@ -4754,9 +5430,128 @@ class FRPManagerUI {
         const hint = document.getElementById('proxyTypeHint');
         if (hint) {
             hint.textContent = isTcpUdp ? tt("TCP/UDP：需填写远程端口", "TCP/UDP: remote port is required")
-                : (isHttp ? tt("HTTP/HTTPS：填子域名或自定义域名（需 frps 配置 vhost 端口）", "HTTP/HTTPS: fill in a subdomain or custom domain (frps needs a configured vhost port)")
-                          : tt("STCP/SUDP/XTCP：需填访问密钥 sk，访问端填 serverName", "STCP/SUDP/XTCP: fill in the secret key (sk); the visitor side uses serverName"));
+                : (isMux ? tt("TCPMUX：需填写远程端口，frps 侧需配 tcpmux multiplexer", "TCPMUX: remote port is required; frps needs a tcpmux multiplexer")
+                         : (isHttp ? tt("HTTP/HTTPS：填子域名或自定义域名（需 frps 配置 vhost 端口）", "HTTP/HTTPS: fill in a subdomain or custom domain (frps needs a configured vhost port)")
+                                   : tt("STCP/SUDP/XTCP：需填访问密钥 sk，访问端填 serverName", "STCP/SUDP/XTCP: fill in the secret key (sk); the visitor side uses serverName")));
         }
+        this.validateProxyForm();
+    }
+
+    // 行内实时校验：返回 [{el, msg}]，并给对应字段加红框
+    validateProxyForm(silent) {
+        const errs = [];
+        const mark = (el, msg) => { if (el) errs.push({el: el, msg: msg}); };
+        const ty = ((this.proxyType && this.proxyType.value) || 'tcp').toLowerCase();
+        const name = (this.proxyName && this.proxyName.value || '').trim();
+        if (!name) mark(this.proxyName, tt('请填写名称', 'Name is required'));
+        else if (!/^[A-Za-z0-9_-]+$/.test(name)) mark(this.proxyName, tt('名称只能用字母、数字、下划线、连字符', 'Use letters, digits, underscore or hyphen only'));
+        else {
+            const idx = parseInt(this.proxyEditIndex ? this.proxyEditIndex.value : '-1', 10);
+            const dup = (this._proxies || []).findIndex((p, i) => i !== idx && (p.name || '') === name);
+            if (dup >= 0) mark(this.proxyName, tt('已存在同名代理', 'A proxy with this name already exists'));
+        }
+        const numOk = (el, min, label) => {
+            if (!el) return;
+            const v = String(el.value || '').trim();
+            if (v === '') return;
+            const n = Number(v);
+            if (!isFinite(n) || !Number.isInteger(n) || n < min) {
+                mark(el, label + tt('需为不小于 ', ' must be an integer >= ') + min);
+                return;
+            }
+            el.classList.remove('pf-bad-number');
+        };
+        numOk(this.proxyLocalPort, 1, tt('本地端口', 'Local port'));
+        numOk(this.proxyRemotePort, 1, tt('远程端口', 'Remote port'));
+        if ((ty === 'tcp' || ty === 'udp' || ty === 'tcpmux')) {
+            const rp = this.proxyRemotePort ? String(this.proxyRemotePort.value || '').trim() : '';
+            if (!rp) mark(this.proxyRemotePort, tt('该类型必须填写远程端口', 'Remote port is required for this type'));
+        }
+        if ((ty === 'stcp' || ty === 'sudp' || ty === 'xtcp')) {
+            const sk = this.proxySk ? String(this.proxySk.value || '').trim() : '';
+            if (!sk) mark(this.proxySk, tt('该类型必须填写访问密钥 sk', 'Access secret (sk) is required for this type'));
+        }
+        if (ty === 'http' || ty === 'https') {
+            const sd = this.proxySubdomain ? String(this.proxySubdomain.value || '').trim() : '';
+            const cd = this.proxyCustomDomains ? String(this.proxyCustomDomains.value || '').trim() : '';
+            if (!sd && !cd) mark(this.proxySubdomain, tt('需填子域名或自定义域名', 'Subdomain or custom domain is required'));
+        }
+        // 应用到 DOM
+        const seen = new Set();
+        this.proxyForm.querySelectorAll('.pf').forEach((w) => {
+            w.classList.remove('pf-bad');
+            w.classList.remove('pf-err');
+        });
+        errs.forEach((e) => {
+            const w = e.el.closest ? e.el.closest('.pf') : null;
+            if (w) {
+                w.classList.add('pf-bad');
+                w.setAttribute('title', e.msg);
+                if (!seen.has(e.el.id)) { seen.add(e.el.id); w.classList.add('pf-err'); }
+            }
+        });
+        const box = document.getElementById('proxyFormErrors');
+        if (box) {
+            if (!errs.length) {
+                box.style.display = 'none';
+                box.innerHTML = '';
+            } else {
+                box.style.display = '';
+                box.className = 'pf-errors' + (silent ? '' : ' is-shown');
+                box.innerHTML = '⚠ ' + errs.map(e => this.escHtml(e.msg)).join('；');
+            }
+        }
+        return errs;
+    }
+
+    // 快捷添加：把常用代理预设填进表单
+    applyProxyPreset(kind) {
+        const presets = {
+            ssh: {name: 'ssh', type: 'tcp', localIP: '127.0.0.1', localPort: 22, remotePort: 6000,
+                  hint: tt('SSH：本地 22 映射到远程 6000', 'SSH: local 22 → remote 6000')},
+            rdp: {name: 'rdp', type: 'tcp', localIP: '127.0.0.1', localPort: 3389, remotePort: 6001,
+                  hint: tt('RDP：本地 3389 映射到远程 6001', 'RDP: local 3389 → remote 6001')},
+            web: {name: 'web', type: 'http', localIP: '127.0.0.1', localPort: 80, subdomain: 'web',
+                  hint: tt('Web：本地 80，通过子域名 web 访问', 'Web: local 80, reachable at subdomain "web"')},
+            db:  {name: 'db', type: 'tcp', localIP: '127.0.0.1', localPort: 3306, remotePort: 6002,
+                  hint: tt('数据库：本地 3306 映射到远程 6002', 'Database: local 3306 → remote 6002')},
+        };
+        const p = presets[kind];
+        if (!p) return;
+        this.showProxyForm(-1);
+        const put = (el, v) => { if (el) el.value = (v == null ? '' : v); };
+        put(this.proxyName, p.name); put(this.proxyType, p.type);
+        put(this.proxyLocalIp, p.localIP); put(this.proxyLocalPort, p.localPort);
+        put(this.proxyRemotePort, p.remotePort); put(this.proxySubdomain, p.subdomain);
+        this.applyProxyTypeFields();
+        this.showMessage(p.hint, 'info');
+    }
+
+    async duplicateProxy(i) {
+        const list = (this._proxies || []).slice();
+        if (i < 0 || i >= list.length) return;
+        const src = list[i] || {};
+        let name = (src.name || 'proxy') + '_copy';
+        let n = 2;
+        const taken = new Set(list.map(p => p.name));
+        while (taken.has(name)) { name = (src.name || 'proxy') + '_copy' + (++n); }
+        const copy = Object.assign({}, src, {name: name});
+        list.splice(i + 1, 0, copy);
+        try {
+            const resp = await fetch('/api/proxies', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({proxies: list})
+            });
+            const d = await resp.json();
+            if (d.success) {
+                this._proxies = list;
+                if (d.format) this._proxyFormat = d.format;
+                this.renderProxies();
+                this.showMessage(tt('已复制为「', 'Duplicated as "') + name + '」', 'success');
+            } else {
+                this.showMessage(d.message || tt('复制失败', 'Duplicate failed'), 'error');
+            }
+        } catch (e) { this.showMessage(tt('复制代理失败', 'Failed to duplicate proxy'), 'error'); }
     }
 
     showProxyForm(idx) {
@@ -4821,21 +5616,14 @@ class FRPManagerUI {
         return o;
     }
     async saveProxy() {
-        const name = (this.proxyName && this.proxyName.value || '').trim();
-        if (!name) { this.showMessage(tt('请填写代理名称', 'Enter a proxy name'), 'warning'); return; }
-        const ty = ((this.proxyType && this.proxyType.value) || '').toLowerCase();
-        if (!ty) { this.showMessage(tt('请选择代理类型', 'Select a proxy type'), 'warning'); return; }
-        // 去重（编辑自身不算冲突）
-        const idx = parseInt(this.proxyEditIndex ? this.proxyEditIndex.value : '-1', 10);
-        const dup = (this._proxies || []).findIndex((p, i) => i !== idx && (p.name || '') === name);
-        if (dup >= 0) { this.showMessage(tt('已存在同名代理「', 'A proxy named "') + name + '」', 'warning'); return; }
-        if (ty === 'tcp' || ty === 'udp') {
-            const rp = this.proxyRemotePort ? String(this.proxyRemotePort.value).trim() : '';
-            if (!rp) { this.showMessage(tt('TCP/UDP 代理必须填写「远程端口」', 'TCP/UDP proxies require a remote port'), 'warning'); return; }
-        }
-        if (ty === 'stcp' || ty === 'sudp' || ty === 'xtcp') {
-            const sk = this.proxySk ? String(this.proxySk.value).trim() : '';
-            if (!sk) { this.showMessage(tt('STCP/SUDP/XTCP 代理必须填写「访问密钥 sk」', 'STCP/SUDP/XTCP proxies require an access secret (sk)'), 'warning'); return; }
+        // 先跑行内校验，有问题直接拦下（名称去重也在里面）
+        const errs = this.validateProxyForm();
+        if (errs.length) {
+            const first = errs[0].el;
+            this.showMessage(errs[0].msg, 'warning');
+            try { first.focus(); } catch (e) {}
+            try { first.closest('.pf').scrollIntoView({behavior: 'smooth', block: 'center'}); } catch (e) {}
+            return;
         }
         try {
             const obj = this._collectProxy();
@@ -5000,6 +5788,15 @@ style.textContent = `
     }
     /* 按代理类型隐藏无关字段 */
     .pf.is-hidden { display:none !important; }
+    /* 行内校验：命中问题的字段标红 */
+    .proxy-grid .pf.pf-bad > span { color:#ef4444; }
+    .proxy-grid .pf.pf-bad input, .proxy-grid .pf.pf-bad select{
+        border-color:#ef4444; box-shadow:0 0 0 3px rgba(239,68,68,.14);
+    }
+    .pf-errors { margin:6px 0 2px; font-size:.82em; color:#ef4444; }
+    .pf-errors.is-shown { animation:pfNudge .28s ease; }
+    @keyframes pfNudge { 0%{transform:translateX(0)} 35%{transform:translateX(-4px)} 70%{transform:translateX(4px)} 100%{transform:translateX(0)} }
+    .proxy-preset { max-width:210px; }
     .pf-checks { display:flex; gap:18px; margin:8px 0; }
     .pf-checks .chk { display:inline-flex; align-items:center; gap:7px; font-size:.85em; color:var(--txt2); cursor:pointer; }
     .pf-checks .chk input { width:auto; margin:0; }
@@ -5029,6 +5826,22 @@ style.textContent = `
     .sec-msg { font-size:.88em; margin-bottom:4px; }
     .sec-fix { font-size:.8em; color:var(--txt3); }
     .sec-ok { color:#22c55e; font-weight:600; }
+
+    /* 登录加固（v1.15.0） */
+    .lh-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:14px; margin-top:6px; }
+    .lh-card { background:var(--panel3); border:1px solid var(--line); border-radius:12px; padding:16px 16px 18px; }
+    .lh-card .sub-h { color:var(--cyan); margin:0 0 12px; }
+    .lh-params { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:10px 0 6px; }
+    .lh-params .form-group label { font-size:.8em; color:var(--txt3); margin-bottom:4px; }
+    .lh-params .form-group input { width:100%; padding:8px 9px; }
+    .lh-card textarea { min-height:84px; width:100%; resize:vertical; font-family:'Courier New',monospace; line-height:1.5; }
+    .lh-totp-status { font-size:.9em; margin:2px 0 12px; color:var(--txt2); }
+    .lh-totp-box { margin:10px 0; padding:12px; border:1px dashed var(--line); border-radius:10px; background:var(--panel2); }
+    .lh-totp-box .fl { display:block; font-size:.82em; color:var(--txt3); margin:8px 0 4px; }
+    .secret-box { display:flex; align-items:center; gap:8px; }
+    .secret-box code { flex:1; min-width:0; background:var(--log-bg); padding:7px 9px; border-radius:7px;
+                      font-family:'Courier New',monospace; font-size:.86em; word-break:break-all; color:var(--log-txt); }
+    .secret-box code.uri { font-size:.78em; }
     /* 操作审计（独立页面） */
     .audit-tools { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
     .audit-tools input[type="text"]{
@@ -5136,7 +5949,7 @@ document.addEventListener('keydown', (e) => {
             // 一级页面 → 容器 id
             var PAGES = { dashboard: 'pageDashboard', system: 'pageSystem',
                           settings: 'pageSettings', security: 'pageSecurity',
-                          logs: 'pageLogs', audit: 'pageAudit' };
+                          logs: 'pageLogs', audit: 'pageAudit', update: 'pageUpdate' };
             // 一级页面 → 侧栏二级目录的 class（与页面自上而下的段落顺序一致）
             var SUBCLS = { dashboard: 'nav-dash', system: 'nav-sys',
                            settings: 'nav-sets', security: 'nav-sec' };
@@ -5311,6 +6124,27 @@ document.addEventListener('keydown', (e) => {
         /* ===== 版本切换 ===== */
         .ver-note{font-size:0.74rem; color:var(--txt3)}
         /* 版本选择器（#frpcVerSel / #frpsVerSel）已改为自定义 .vsel 组件，样式见 .vsel-* */
+
+        /* ===== 面板更新（v1.14.0） ===== */
+        .update-grid{display:grid; grid-template-columns:minmax(260px,1fr) 2fr; gap:16px; margin-top:14px}
+        @media screen and (max-width:768px){ .update-grid{grid-template-columns:1fr} }
+        .update-card{background:var(--panel2); border:1px solid var(--line); border-radius:14px; padding:16px}
+        .update-row{display:flex; align-items:center; gap:10px; margin:10px 0; flex-wrap:wrap}
+        .update-row > label{min-width:74px; color:var(--txt2); font-size:0.86rem}
+        .update-row > b{font-size:1.02rem; color:var(--txt)}
+        .update-row select, .update-row input[type=text]{flex:1; min-width:160px}
+        .update-notes-card{display:flex; flex-direction:column}
+        .update-notes-title{font-size:0.82rem; color:var(--txt2); margin-bottom:8px}
+        .update-notes{flex:1; min-height:160px; margin:0; background:var(--log-bg); color:var(--log-txt);
+            font-size:0.82rem; white-space:pre-wrap; word-break:break-word}
+        .update-progress{margin-top:16px; display:flex; align-items:center; gap:12px}
+        .progress-bar{flex:1; height:8px; background:var(--panel3); border-radius:6px; overflow:hidden}
+        .progress-fill{height:100%; width:0; background:linear-gradient(90deg,#22d3ee,#6366f1); transition:width .3s ease}
+        .update-progress span{font-size:0.8rem; color:var(--txt2); white-space:nowrap}
+        .update-msg{margin-top:14px; font-size:0.86rem; padding:10px 12px; border-radius:10px; display:none}
+        .update-msg.info{display:block; background:var(--panel2); color:var(--txt2); border:1px solid var(--line)}
+        .update-msg.ok{display:block; background:rgba(34,197,94,.12); color:#16a34a; border:1px solid rgba(34,197,94,.4)}
+        .update-msg.err{display:block; background:rgba(239,68,68,.12); color:#ef4444; border:1px solid rgba(239,68,68,.4)}
 
         @media screen and (max-width:768px){
             .topbar{top:62px; padding:8px 12px}

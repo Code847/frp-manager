@@ -6,7 +6,7 @@ import time
 import socket
 import threading
 from flask import (Flask, render_template_string, request, jsonify,
-                   send_from_directory, has_request_context)
+                   send_from_directory, has_request_context, make_response)
 
 # 导入FRP管理器
 from frp_manager import FRPManager
@@ -594,6 +594,7 @@ def api_info():
         'config_dir': config['FRP_CONFIG_DIR'],
         'log_dir': config['FRP_LOG_DIR'],
         'data_dir': DATA_DIR,
+        'app_version': app_version(),
     })
 
 
@@ -1266,19 +1267,26 @@ def server_probe():
 
 @app.route('/api/download-frp', methods=['POST'])
 def download_frp_api():
-    """后台下载当前架构对应的 frp 二进制（带进度查询）。
+    """后台下载 frp 二进制（带进度查询）。
 
     立即返回，前端轮询 /api/download-frp/progress 获取进度。
-    可选字段：version（指定版本）、mirror（国内代理镜像名）。
+    可选字段：version（指定版本）、mirror（国内代理镜像名）、
+    target（目标平台，如 linux_arm64，用于「分化下载」，结果放进 bin/packages）、
+    verify（是否做 SHA256 校验，默认 true）。
     """
     m = app.config['FRP_MANAGER']
     version = request.form.get('version', '').strip()
     mirror = request.form.get('mirror', '').strip()
+    target = (request.form.get('target') or '').strip()
+    verify = (request.form.get('verify') or 'true').strip().lower() not in ('0', 'false', 'no')
     if not version and request.is_json:
         j = request.get_json(silent=True) or {}
         version = (j.get('version') or '').strip()
         mirror = (j.get('mirror') or '').strip()
-    ok, msg = m.start_download_frp(version or None, mirror or None)
+        target = (j.get('target') or '').strip()
+        verify = bool(j.get('verify', True))
+    ok, msg = m.start_download_frp(version or None, mirror or None,
+                                   target=target or None, verify=verify)
     if ok:
         return jsonify({'success': True, 'message': msg})
     return jsonify({'success': False, 'message': msg}), 409
@@ -1969,6 +1977,87 @@ def static_file(path):
     if os.path.isfile(os.path.join(config['STATIC_DIR'], path)):
         return send_from_directory(config['STATIC_DIR'], path)
     return 'Not Found', 404
+
+
+# ------------------------------------------------------------------ #
+# PWA（v1.15.0）：manifest / service worker / 图标
+# ------------------------------------------------------------------ #
+@app.route('/manifest.webmanifest')
+def pwa_manifest():
+    return send_from_directory(config['STATIC_DIR'], 'manifest.webmanifest',
+                               mimetype='application/manifest+json')
+
+
+@app.route('/sw.js')
+def pwa_service_worker():
+    resp = make_response(send_from_directory(config['STATIC_DIR'], 'sw.js',
+                                             mimetype='application/javascript'))
+    # SW 必须每次都拿到最新脚本，否则永远停在旧版本
+    resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    return resp
+
+
+@app.route('/icon.svg')
+def pwa_icon():
+    return send_from_directory(config['STATIC_DIR'], 'icon.svg', mimetype='image/svg+xml')
+
+
+# ------------------------------------------------------------------ #
+# 面板自更新（v1.14.0）
+# ------------------------------------------------------------------ #
+@app.route('/api/update/check')
+def api_update_check():
+    """查询更新源：返回当前版本 / 最新版本 / 是否有更新 / 更新日志 / 下载地址。"""
+    m = app.config['FRP_MANAGER']
+    return jsonify({'success': True, **m.check_self_update()})
+
+
+@app.route('/api/update/source', methods=['GET', 'POST'])
+def api_update_source():
+    """获取/设置更新源（空=官方 GitHub；也可填自定义 manifest JSON 地址）。"""
+    m = app.config['FRP_MANAGER']
+    if request.method == 'POST':
+        d = request.get_json(silent=True) or {}
+        m.set_update_source((d.get('source') or '').strip())
+        return jsonify({'success': True, 'source': m.update_source_url()})
+    return jsonify({'success': True, 'source': m.update_source_url()})
+
+
+@app.route('/api/update/apply', methods=['POST'])
+def api_update_apply():
+    """后台执行更新：下载 -> 备份 -> 覆盖 -> 重启。立即返回，避免长时间阻塞请求。"""
+    m = app.config['FRP_MANAGER']
+    d = request.get_json(silent=True) or {}
+    url = (d.get('url') or '').strip()
+    sha = d.get('sha256')
+
+    def run():
+        try:
+            m.apply_self_update(url or None, sha256=sha)
+        except Exception as e:
+            m.write_event(_m('面板更新线程异常：%s' % e, 'Update thread error: %s' % e))
+
+    threading.Thread(target=run, daemon=True).start()
+    return jsonify({'success': True,
+                    'message': _m('已开始更新，完成后会自动重启',
+                                  'Update started; the panel will restart automatically when done')})
+
+
+@app.route('/api/update/rollback', methods=['POST'])
+def api_update_rollback():
+    """后台执行回滚：恢复到最近一次更新前的备份并重启。"""
+    m = app.config['FRP_MANAGER']
+
+    def run():
+        try:
+            m.rollback_self_update()
+        except Exception as e:
+            m.write_event(_m('回滚线程异常：%s' % e, 'Rollback thread error: %s' % e))
+
+    threading.Thread(target=run, daemon=True).start()
+    return jsonify({'success': True,
+                    'message': _m('已开始回滚，完成后会自动重启',
+                                  'Rollback started; the panel will restart automatically')})
 
 def main():
     print(f"[INFO] FRP Manager 启动中...")

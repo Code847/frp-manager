@@ -22,6 +22,7 @@ import platform
 import subprocess
 import secrets
 import datetime
+import hashlib
 
 from pathlib import Path
 
@@ -33,6 +34,16 @@ except ImportError:  # 允许在没装 requests 时仍能导入（由 main.py �
 # 未能探测到最新版本时的默认版本（0.52+ 仍兼容 ini 配置格式）
 # v0.71.0：最新稳定版；0.67.0 存在 CVE-2026-40910，已弃用
 DEFAULT_FRP_VERSION = '0.71.0'
+
+# 程序自身版本（v1.14.0 起集中于此，main.py 从本模块导入，避免多处漂移）
+APP_VERSION = '1.15.0'
+
+# 面板自更新（v1.14.0）：官方发布仓库与更新包资产名
+UPDATE_REPO = 'Code847/frp-manager'
+UPDATE_ASSET_NAMES = ('frp-manager-update.zip', 'update.zip', 'frp-manager.zip')
+# 自更新时绝不允许覆盖/删除的目录与文件（用户数据与已下载二进制必须保留）
+UPDATE_PROTECTED = {'configs', 'logs', 'temp', 'bin', '.git', '.workbuddy',
+                    '__pycache__', 'venv', '.venv'}
 
 
 # ------------------------------------------------------------------ #
@@ -152,6 +163,54 @@ ARCH_ALIASES = {
     # loongarch（frp 无官方产物，走源码编译或第三方包，这里显式提示）
     'loongarch64': 'loong64', 'mips64': 'mips64', 'riscv64': 'riscv64',
 }
+
+# 常用目标平台，供前端「分化下载」下拉使用
+DOWNLOAD_TARGETS = (
+    ('windows_amd64', 'Windows x86_64'),
+    ('windows_arm64', 'Windows ARM64'),
+    ('windows_386', 'Windows 32 位'),
+    ('linux_amd64', 'Linux x86_64'),
+    ('linux_arm64', 'Linux ARM64'),
+    ('linux_arm', 'Linux ARMv7'),
+    ('linux_386', 'Linux 32 位'),
+    ('darwin_amd64', 'macOS x86_64'),
+    ('darwin_arm64', 'macOS Apple Silicon'),
+)
+
+
+def asset_platform(os_name=None, arch=None):
+    """规范化的（包后缀, 压缩包扩展名, 二进制扩展名）。
+
+    frp 官方发布包命名：frp_<版本>_<系统>_<架构>.<ext>，Windows 为 zip（带 .exe）。
+    """
+    os_name = (os_name or '').strip().lower()
+    if not os_name or os_name.startswith('win'):
+        os_name = 'windows' if os_name.startswith('win') else _norm_system()
+    if os_name.startswith('dar'):
+        os_name = 'darwin'
+    arch = (arch or '').strip().lower() or _norm_arch()
+    plat = f"{os_name}_{arch}"
+    if os_name == 'windows':
+        return plat, 'zip', '.exe'
+    return plat, 'tar.gz', ''
+
+
+def frp_asset_name(version, target=None):
+    """目标平台的官方压缩包文件名，如 frp_0.71.0_linux_arm64.tar.gz"""
+    if target:
+        plat, ext, _ = asset_platform(*str(target).strip().lower().replace('-', '_').split('_')[:2])
+    else:
+        plat, ext, _ = asset_platform()
+    return f"frp_{version}_{plat}.{ext}"
+
+
+def frp_target_options(version):
+    """按平台分化出所有官方压缩包文件名。"""
+    out = []
+    for t, _label in DOWNLOAD_TARGETS:
+        _, ext, _ = asset_platform(*t.split('_'))
+        out.append(f"frp_{version}_{t}.{ext}")
+    return out
 
 
 def _norm_system():
@@ -332,54 +391,123 @@ class FRPManager:
         self.frp_version = DEFAULT_FRP_VERSION
         return self.frp_version
 
-    def _download_to(self, url, filepath, timeout=120, progress=None):
-        """流式下载单个文件，失败返回 False。
+    @staticmethod
+    def _sha256_file(path, chunk=1 << 20):
+        """计算文件 SHA256"""
+        h = hashlib.sha256()
+        with open(path, 'rb') as f:
+            while True:
+                b = f.read(chunk)
+                if not b:
+                    break
+                h.update(b)
+        return h.hexdigest()
+
+    def _set_dl_extra(self, extra):
+        """把下载结果补充信息（SHA256 / 包路径）挂到进度状态里，供前端展示。"""
+        try:
+            if getattr(self, '_dl', None) is not None:
+                self._dl['extra'] = extra
+        except Exception:
+            pass
+
+    def fetch_release_checksums(self, version, timeout=20):
+        """拉取该版本 release 的 checksums.txt，返回 {文件名: sha256}。
+
+        拿不到时返回空 dict —— 调用方据此跳过校验而不是判定失败。
+        """
+        url = (GITHUB_URL.format(ver=version, name='checksums.txt'))
+        try:
+            if requests is not None:
+                r = requests.get(url, timeout=timeout, headers={'User-Agent': 'frp-manager'})
+                text = r.text if r.status_code == 200 else ''
+            else:
+                import urllib.request
+                with urllib.request.urlopen(urllib.request.Request(
+                        url, headers={'User-Agent': 'frp-manager'}), timeout=timeout) as r:
+                    text = r.read().decode('utf-8', 'ignore')
+        except Exception as e:
+            print(f"[WARN] 获取 checksums.txt 失败: {e}")
+            return {}
+        out = {}
+        for line in (text or '').splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            parts = line.split()
+            if len(parts) >= 2:
+                out[parts[-1].lstrip('*')] = parts[0].lower()
+        return out
+
+    def _download_to(self, url, filepath, timeout=120, progress=None, resume=True):
+        """流式下载单个文件（支持断点续传），失败返回 False。
+
+        已下载的片段写在 filepath + '.part' 里；再次调用时以 Range 续写，
+        服务端不支持 Range 则回退为完整重下。
 
         progress: 可选回调 progress(phase, percent, done, total)，用于前端进度查询。
         """
         if requests is None:
             print("[ERROR] 缺少 requests 库，无法下载")
             return False
+        tmp = filepath + '.part'
+        done = os.path.getsize(tmp) if (resume and os.path.exists(tmp)) else 0
         try:
-            with requests.get(url, stream=True, timeout=timeout,
-                              headers={'User-Agent': 'frp-manager'}) as resp:
-                if resp.status_code != 200:
+            headers = {'User-Agent': 'frp-manager'}
+            if done > 0:
+                headers['Range'] = f'bytes={done}-'
+            with requests.get(url, stream=True, timeout=timeout, headers=headers) as resp:
+                # 服务端忽略 Range 时返回 200，说明续传无效，必须完整重来
+                if resp.status_code == 200 and done > 0:
+                    done = 0
+                if resp.status_code not in (200, 206):
                     return False
                 total = int(resp.headers.get('content-length', 0))
-                done = 0
-                tmp = filepath + '.part'
+                if resp.status_code == 206:
+                    # 206 的 content-length 只是本段长度，补上已下载部分
+                    total = int(resp.headers.get('content-range', '').split('/')[-1] or total) or total
+                    total = max(total, done)
+                if total and done >= total:
+                    os.replace(tmp, filepath)
+                    return True
+                mode = 'ab' if (done > 0 and resp.status_code == 206) else 'wb'
+                resp_done = done
                 if progress:
-                    progress('downloading', 0, 0, total)
-                with open(tmp, 'wb') as f:
+                    progress('downloading', (resp_done * 100.0 / total) if total else 0,
+                             resp_done, total)
+                with open(tmp, mode) as f:
                     for chunk in resp.iter_content(chunk_size=64 * 1024):
                         if chunk:
                             f.write(chunk)
-                            done += len(chunk)
+                            resp_done += len(chunk)
                             if total > 0:
-                                pct = done * 100.0 / total
+                                pct = resp_done * 100.0 / total
                                 if progress:
-                                    progress('downloading', pct, done, total)
+                                    progress('downloading', pct, resp_done, total)
                                 else:
                                     sys.stdout.write(
                                         f"\r[INFO] 下载中 {pct:.1f}% "
-                                        f"({done}/{total} bytes)")
+                                        f"({resp_done}/{total} bytes)")
                                     sys.stdout.flush()
                 if not progress:
                     sys.stdout.write("\n")
-                if total > 0 and done < total * 0.95:
-                    print(f"[ERROR] 下载不完整: {done}/{total}")
+                if total > 0 and resp_done < total:
+                    print(f"[ERROR] 下载不完整: {resp_done}/{total}")
                     os.remove(tmp)
                     return False
-                os.replace(tmp, filepath)
-                return True
+            os.replace(tmp, filepath)
+            return True
         except Exception as e:
             print(f"[WARN] 下载失败 {url}: {e}")
-            try:
-                if os.path.exists(filepath + '.part'):
-                    os.remove(filepath + '.part')
-            except OSError:
-                pass
+            # 保留 .part，下次可续传（中断属于常态，不算失败）
             return False
+
+    def _discard_part(self, filepath):
+        try:
+            if os.path.exists(filepath + '.part'):
+                os.remove(filepath + '.part')
+        except OSError:
+            pass
 
     def build_mirror_list(self, mirror=None):
         """返回待尝试的下载地址模板列表（按顺序回退）。
@@ -406,8 +534,23 @@ class FRPManager:
                 return True
         return False
 
-    def download_frp(self, version=None, mirror=None, progress=None):
-        """下载并安装当前平台（含 ARM）对应的 frpc / frps。
+    @staticmethod
+    def resolve_target(target=None):
+        """把 'linux_arm64' / 'linux' / None 解析为官方包后缀，返回 (后缀, 压缩包扩展名, 二进制扩展名)。"""
+        if not target:
+            return asset_platform()
+        # 允许 linux_arm64 / linux-arm64 / linux/arm64 三种写法
+        parts = re.split(r'[-_/]+', str(target).strip().lower())
+        return asset_platform(parts[0] or None, parts[1] if len(parts) > 1 else None)
+
+    def download_frp(self, version=None, mirror=None, progress=None,
+                     target=None, verify=True):
+        """下载并安装 frpc / frps。
+
+        target  可选：目标平台（如 linux_arm64），用于「分化下载」——
+                下载指定平台的官方包但不安装；不传则等于当前平台（正常安装）。
+        verify  可选：下载后用 release 的 checksums.txt 做 SHA256 校验；
+                取不到校验值时自动跳过，而不是直接判失败。
 
         progress: 可选回调 progress(phase, percent, done, total, message)。
         返回 True/False。
@@ -418,10 +561,22 @@ class FRPManager:
 
         try:
             version = version or self.frp_version or self.get_latest_version()
-            archive_name = f"frp_{version}_{self.release_platform}.{self.archive_ext}"
+            plat, archive_ext, _bin_ext = self.resolve_target(target)
+            archive_name = f"frp_{version}_{plat}.{archive_ext}"
             archive_path = os.path.join(self.config['TEMP_DIR'], archive_name)
+            is_current = (plat == self.release_platform)
 
-            prog('resolving', 3, 0, 0, f'解析版本 v{version}')
+            prog('resolving', 3, 0, 0, f'解析版本 v{version}（{plat}）')
+
+            want_sha = ''
+            if verify:
+                prog('checksum', 6, 0, 0, '获取官方校验值')
+                checksums = self.fetch_release_checksums(version)
+                want_sha = (checksums or {}).get(archive_name, '')
+                if not want_sha:
+                    prog('checksum', 8, 0, 0, '未取到校验值，本轮跳过 SHA256 校验')
+                    print(f"[WARN] 未找到 {archive_name} 的官方校验值，跳过 SHA256 校验")
+
             ok = self._download_with_mirrors(
                 version, archive_name, archive_path, mirror)
             if not ok:
@@ -429,6 +584,34 @@ class FRPManager:
                 print(f"[ERROR] FRP 下载失败：{archive_name}")
                 print(f"[ERROR] 可手动下载并放到 bin/ 目录：frpc / frps")
                 return False
+
+            if want_sha:
+                actual = self._sha256_file(archive_path)
+                if actual != want_sha:
+                    try:
+                        os.remove(archive_path)
+                    except OSError:
+                        pass
+                    prog('failed', 0, 0, 0, 'SHA256 校验失败，已丢弃该文件')
+                    print(f"[ERROR] SHA256 校验失败：期望 {want_sha[:16]}…，实际 {actual[:16]}…")
+                    return False
+                prog('verified', 58, 0, 0, 'SHA256 校验通过')
+                self._set_dl_extra({'sha256': actual, 'verified': True})
+
+            if not is_current:
+                # 分化下载：只取包不安装，供用户拷到目标设备
+                pkg_dir = os.path.join(os.path.dirname(self.config['FRP_BIN_DIR']), 'packages')
+                os.makedirs(pkg_dir, exist_ok=True)
+                dst = os.path.join(pkg_dir, archive_name)
+                try:
+                    shutil.copy2(archive_path, dst)
+                    os.remove(archive_path)
+                except OSError as e:
+                    print(f"[WARN] 归档更新包失败: {e}")
+                prog('done', 100, 0, 0, f'已下载 {archive_name}，未安装（可在 bin/packages 取用）')
+                self._set_dl_extra({'sha256': want_sha or '', 'verified': bool(want_sha),
+                                    'package_path': dst, 'installed': False})
+                return True
 
             prog('extracting', 60, 0, 0, '解压中')
             extract_dir = os.path.join(self.config['TEMP_DIR'],
@@ -502,7 +685,8 @@ class FRPManager:
         if not hasattr(self, '_dl'):
             self._dl = {'phase': 'idle', 'percent': 0, 'done': 0, 'total': 0,
                        'message': '', 'finished': True, 'ok': None,
-                       'error': None, 'version': None, 'started': None}
+                       'error': None, 'version': None, 'started': None,
+                       'target': None, 'extra': None}
             self._dl_thread = None
 
     def _dl_progress(self, phase, percent=0, done=0, total=0, message=''):
@@ -512,19 +696,21 @@ class FRPManager:
         if message:
             self._dl['message'] = message
 
-    def start_download_frp(self, version=None, mirror=None):
+    def start_download_frp(self, version=None, mirror=None, target=None, verify=True):
         """在后台线程启动下载，立即返回 (ok, message)。进度用 download_progress() 查询。"""
         self._init_dl_state()
         if self._dl_thread is not None and self._dl_thread.is_alive():
             return False, '已有下载任务正在进行，请稍后再试'
         self._dl = {'phase': 'starting', 'percent': 0, 'done': 0, 'total': 0,
                     'message': '准备下载...', 'finished': False, 'ok': None,
-                    'error': None, 'version': version,
-                    'started': time.strftime('%Y-%m-%d %H:%M:%S')}
+                    'error': None, 'version': version, 'target': target,
+                    'start_verify': verify,
+                    'started': time.strftime('%Y-%m-%d %H:%M:%S'), 'extra': None}
 
         def run():
             try:
-                ok = self.download_frp(version, mirror, progress=self._dl_progress)
+                ok = self.download_frp(version, mirror, progress=self._dl_progress,
+                                       target=target, verify=verify)
                 self._dl['finished'] = True
                 self._dl['ok'] = ok
                 if not self._dl['message'] or self._dl['phase'] == 'done':
@@ -567,6 +753,8 @@ class FRPManager:
             'alert_email_user': '', 'alert_email_pass': '', 'alert_email_to': '',
             # 界面语言
             'lang': 'zh',
+            # 面板自更新（v1.14.0）：自定义更新源 manifest URL（空=官方 GitHub Releases）
+            'update_source': '',
             # 配置快照（P3-⑦）：保存配置时自动生成快照，可回滚
             'auto_snapshot': True,
             # 定时重启（v1.13.0）：mode=interval 按间隔小时 / daily 每天固定时刻
@@ -641,6 +829,8 @@ class FRPManager:
                 for k in ('auto_restart_frpc', 'auto_restart_frps'):
                     if cp.has_option('restart', k):
                         out[k] = cp.get('restart', k).strip().lower() in ('1', 'true', 'yes', 'on')
+            if cp.has_section('update') and cp.has_option('update', 'update_source'):
+                out['update_source'] = cp.get('update', 'update_source').strip()
         except Exception as e:
             print(f"[WARN] 读取应用设置失败: {e}")
         return out
@@ -684,12 +874,309 @@ class FRPManager:
                       'alert_email_user', 'alert_email_pass', 'alert_email_to'):
                 cp.set('alert', k, str(merged.get(k, '')))
             cp.set('alert', 'alert_email_port', str(merged.get('alert_email_port', 465)))
+            cp.add_section('update')
+            cp.set('update', 'update_source', str(merged.get('update_source', '')))
             with open(self.app_settings_path(), 'w', encoding='utf-8') as f:
                 cp.write(f)
             return True
         except Exception as e:
             print(f"[ERROR] 保存应用设置失败: {e}")
             return False
+
+    # ------------------------------------------------------------------ #
+    # 面板自更新（v1.14.0）：检查 / 下载 / 备份 / 覆盖 / 回滚 / 重启
+    #
+    # 设计要点：
+    #  - 更新源双通道：留空=官方 GitHub Releases（匿名下载，无需令牌）；
+    #    也可在设置里填一个自定义 manifest URL（JSON：{version,notes,url,sha256?}），
+    #    便于内网/私有分发，也方便本地验证。
+    #  - 覆盖时只动「代码文件」，configs/ logs/ temp/ bin/ 一律排除，更新不丢配置。
+    #  - 每次覆盖前先把当前版本整目录备份到 temp/backup/<时间戳>/，失败可一键回滚。
+    #  - 重启用 os.execv 原地拉起新进程（源码模式）或重启用 exe（打包模式）。
+    # ------------------------------------------------------------------ #
+    def update_source_url(self):
+        """当前更新源：空字符串表示官方 GitHub Releases。"""
+        try:
+            return (self.load_app_settings().get('update_source') or '').strip()
+        except Exception:
+            return ''
+
+    def set_update_source(self, url):
+        d = self.load_app_settings()
+        d['update_source'] = (url or '').strip()
+        return self.save_app_settings(d)
+
+    @staticmethod
+    def _parse_version(tag):
+        """'v1.14.0' / '1.14' / 'release-2.3.1' -> (1,14,0) 便于比较。"""
+        tag = (tag or '').lstrip('vV').strip()
+        parts = re.findall(r'\d+', tag)
+        nums = [int(x) for x in parts[:3]]
+        while len(nums) < 3:
+            nums.append(0)
+        return tuple(nums[:3])
+
+    def _http_json(self, url, timeout=15):
+        headers = {'User-Agent': 'FRP-Manager/%s' % APP_VERSION}
+        try:
+            if requests is not None:
+                r = requests.get(url, timeout=timeout, headers=headers)
+                r.raise_for_status()
+                return r.json()
+            raise ImportError('requests')
+        except ImportError:
+            import urllib.request
+            req = urllib.request.Request(url, headers=headers)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                import json as _json
+                return _json.loads(resp.read().decode('utf-8'))
+
+    def _http_download(self, url, dest, timeout=60, chunk=65536):
+        headers = {'User-Agent': 'FRP-Manager/%s' % APP_VERSION}
+        if requests is not None:
+            r = requests.get(url, timeout=timeout, headers=headers, stream=True)
+            r.raise_for_status()
+            with open(dest, 'wb') as f:
+                for c in r.iter_content(chunk):
+                    if c:
+                        f.write(c)
+            return
+        import urllib.request
+        req = urllib.request.Request(url, headers=headers)
+        with urllib.request.urlopen(req, timeout=timeout) as resp, open(dest, 'wb') as f:
+            while True:
+                buf = resp.read(chunk)
+                if not buf:
+                    break
+                f.write(buf)
+
+    def check_self_update(self):
+        """查询更新源，返回 {current, latest, has_update, notes, url, sha256, error}。"""
+        cur = APP_VERSION
+        out = {'current': cur, 'latest': '', 'has_update': False,
+               'notes': '', 'url': '', 'sha256': None, 'error': None}
+        try:
+            src = self.update_source_url()
+            if src:
+                data = self._http_json(src, timeout=15)
+                latest = str(data.get('version') or '').lstrip('vV').strip()
+                out.update({
+                    'latest': latest or '?',
+                    'has_update': bool(latest) and self._parse_version(latest) > self._parse_version(cur),
+                    'notes': str(data.get('notes', '') or ''),
+                    'url': str(data.get('url', '') or ''),
+                    'sha256': data.get('sha256'),
+                })
+            else:
+                api = 'https://api.github.com/repos/%s/releases/latest' % UPDATE_REPO
+                data = self._http_json(api, timeout=15)
+                tag = data.get('tag_name', '')
+                latest = tag.lstrip('vV').strip()
+                url = ''
+                for a in data.get('assets', []):
+                    if a.get('name', '').lower() in UPDATE_ASSET_NAMES:
+                        url = a.get('browser_download_url', '')
+                        break
+                if not url and data.get('zipball_url'):
+                    url = data.get('zipball_url')
+                out.update({
+                    'latest': latest or '?',
+                    'has_update': bool(latest) and self._parse_version(latest) > self._parse_version(cur),
+                    'notes': str(data.get('body', '') or ''),
+                    'url': str(url or ''),
+                    'sha256': None,
+                })
+        except Exception as e:
+            out['error'] = _m('查询更新失败：%s' % e, 'Update check failed: %s' % e)
+        return out
+
+    def _find_pkg_root(self, extract_dir):
+        """更新包可能把项目根直接打进去，也可能套了一层子目录；找含 main.py 的根。"""
+        if os.path.exists(os.path.join(extract_dir, 'main.py')):
+            return extract_dir
+        sub = [d for d in os.listdir(extract_dir)
+               if os.path.isdir(os.path.join(extract_dir, d))]
+        for d in sub:
+            if os.path.exists(os.path.join(extract_dir, d, 'main.py')):
+                return os.path.join(extract_dir, d)
+        return extract_dir
+
+    def _overlay_files(self, src_root, dst_root, backup_root=None):
+        """把 src_root 下的代码文件覆盖到 dst_root，排除受保护项。
+        backup_root 非空时先把它备份进去（用于回滚）。返回覆盖的文件列表。"""
+        copied = []
+        for name in os.listdir(src_root):
+            if name in UPDATE_PROTECTED or name.startswith('.'):
+                continue
+            s = os.path.join(src_root, name)
+            d = os.path.join(dst_root, name)
+            if backup_root is not None:
+                bs = os.path.join(backup_root, name)
+                try:
+                    if os.path.isdir(d):
+                        if os.path.isdir(bs):
+                            shutil.rmtree(bs, ignore_errors=True)
+                        shutil.copytree(d, bs)
+                    elif os.path.exists(d):
+                        shutil.copy2(d, bs)
+                except Exception as e:
+                    print('[WARN] 备份 %s 失败: %s' % (name, e))
+            try:
+                if os.path.isdir(s):
+                    if os.path.isdir(d):
+                        shutil.rmtree(d, ignore_errors=True)
+                    shutil.copytree(s, d)
+                else:
+                    shutil.copy2(s, d)
+                copied.append(name)
+            except Exception as e:
+                print('[WARN] 覆盖 %s 失败: %s' % (name, e))
+        return copied
+
+    def _backup_current(self, backup_root):
+        """把当前根目录下、除受保护项以外的文件/目录整份备份到 backup_root。"""
+        root = os.path.dirname(os.path.abspath(__file__))
+        for name in os.listdir(root):
+            if name in UPDATE_PROTECTED or name.startswith('.'):
+                continue
+            s = os.path.join(root, name)
+            b = os.path.join(backup_root, name)
+            try:
+                if os.path.isdir(s):
+                    if os.path.isdir(b):
+                        shutil.rmtree(b, ignore_errors=True)
+                    shutil.copytree(s, b)
+                elif os.path.exists(s):
+                    shutil.copy2(s, b)
+            except Exception as e:
+                print('[WARN] 备份 %s 失败: %s' % (name, e))
+
+    def latest_backup(self):
+        bdir = os.path.join(self.config['TEMP_DIR'], 'backup')
+        if not os.path.isdir(bdir):
+            return None
+        subs = sorted([d for d in os.listdir(bdir)
+                       if os.path.isdir(os.path.join(bdir, d))], reverse=True)
+        return os.path.join(bdir, subs[0]) if subs else None
+
+    def apply_self_update(self, url=None, sha256=None, progress=None):
+        """下载更新包 -> （可选 SHA256 校验）-> 备份当前 -> 覆盖 -> 重启。
+        progress: 可选回调 progress(percent, message)。"""
+        def prog(pct, msg):
+            if progress:
+                progress(pct, msg)
+
+        info = self.check_self_update() if not url else {'url': url, 'sha256': sha256}
+        dl_url = url or info.get('url')
+        if not dl_url:
+            prog(0, _m('未获得更新包下载地址', 'No update package URL'))
+            return False, _m('未获得更新包下载地址', 'No update package URL')
+
+        root = os.path.dirname(os.path.abspath(__file__))
+        tmp = self.config['TEMP_DIR']
+        arc = os.path.join(tmp, 'self_update.zip')
+        try:
+            prog(5, _m('正在下载更新包…', 'Downloading update package…'))
+            self._http_download(dl_url, arc, timeout=120)
+
+            if sha256:
+                h = hashlib.sha256()
+                with open(arc, 'rb') as f:
+                    for c in iter(lambda: f.read(65536), b''):
+                        h.update(c)
+                if h.hexdigest().lower() != str(sha256).lower():
+                    return False, _m('SHA256 校验失败，已取消更新', 'SHA256 mismatch; update aborted')
+                prog(35, _m('校验通过', 'Verified'))
+
+            prog(40, _m('正在备份当前版本…', 'Backing up current version…'))
+            ts = time.strftime('%Y%m%d%H%M%S')
+            backup = os.path.join(tmp, 'backup', ts)
+            os.makedirs(backup, exist_ok=True)
+            self._backup_current(backup)  # 把当前代码文件整份备份到 backup（排除受保护项）
+
+            prog(60, _m('正在应用更新…', 'Applying update…'))
+            ext = os.path.join(tmp, 'self_update_extract')
+            if os.path.isdir(ext):
+                shutil.rmtree(ext, ignore_errors=True)
+            os.makedirs(ext, exist_ok=True)
+            with zipfile.ZipFile(arc, 'r') as z:
+                try:
+                    z.extractall(ext, filter='data')   # Python 3.12+ 防路径穿越
+                except TypeError:
+                    z.extractall(ext)
+            pkg_root = self._find_pkg_root(ext)
+            copied = self._overlay_files(pkg_root, root)
+            shutil.rmtree(ext, ignore_errors=True)
+            try:
+                os.remove(arc)
+            except OSError:
+                pass
+
+            self.write_event(_m('面板已更新至 v%s（覆盖 %d 个文件，备份于 %s）'
+                                % (info.get('latest') or '?', len(copied), ts),
+                                'Panel updated to v%s (%d files, backup at %s)'
+                                % (info.get('latest') or '?', len(copied), ts)))
+            prog(95, _m('更新完成，即将重启…', 'Update done, restarting…'))
+            self.restart_app()
+            return True, _m('更新完成', 'Update complete')
+        except Exception as e:
+            prog(0, _m('更新失败：%s' % e, 'Update failed: %s' % e))
+            self.write_event(_m('面板更新失败：%s' % e, 'Panel update failed: %s' % e))
+            return False, _m('更新失败：%s' % e, 'Update failed: %s' % e)
+
+    def rollback_self_update(self, progress=None):
+        """回滚到最近一次备份（更新前的版本）。"""
+        def prog(pct, msg):
+            if progress:
+                progress(pct, msg)
+
+        backup = self.latest_backup()
+        if not backup:
+            return False, _m('没有可用的备份', 'No backup available')
+        root = os.path.dirname(os.path.abspath(__file__))
+        try:
+            prog(40, _m('正在回滚…', 'Rolling back…'))
+            self._overlay_files(backup, root)
+            self.write_event(_m('已回滚至备份 %s' % os.path.basename(backup),
+                                'Rolled back to backup %s' % os.path.basename(backup)))
+            prog(95, _m('回滚完成，即将重启…', 'Rollback done, restarting…'))
+            self.restart_app()
+            return True, _m('已回滚', 'Rolled back')
+        except Exception as e:
+            prog(0, _m('回滚失败：%s' % e, 'Rollback failed: %s' % e))
+            return False, _m('回滚失败：%s' % e, 'Rollback failed: %s' % e)
+
+    def restart_app(self):
+        """原地重启本程序（跨平台）。
+        - 源码模式：os.execv(sys.executable, [python, main.py, *argv])
+        - 打包模式：os.execv(exe, [exe, *argv])
+        调用方应在后台线程里调用，因为它不会返回。"""
+        try:
+            if getattr(sys, 'frozen', False):
+                args = [sys.executable] + sys.argv[1:]
+            else:
+                main_py = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'main.py')
+                py = sys.executable
+                if self.system == 'windows':
+                    pyw = py.replace('python.exe', 'pythonw.exe')
+                    if os.path.exists(pyw):
+                        py = pyw
+                args = [py, main_py] + sys.argv[1:]
+            print('[INFO] 自更新完成，重启进程: %s' % ' '.join(args))
+            if self.system == 'windows':
+                si = subprocess.STARTUPINFO()
+                si.dwFlags |= subprocess.CREATE_NEW_CONSOLE
+                subprocess.Popen(args, close_fds=True, startupinfo=si)
+            else:
+                subprocess.Popen(args, stdin=None, stdout=None, stderr=None,
+                                 start_new_session=True)
+            # 给子进程一点时间接管端口，再退出父进程
+            time.sleep(0.5)
+            os._exit(0)
+        except Exception as e:
+            print('[ERROR] 重启失败: %s' % e)
+            self.write_event(_m('自更新后重启失败：%s（请手动重启）' % e,
+                                'Restart after update failed: %s (please restart manually)' % e))
 
     # ------------------------------------------------------------------ #
     # 开机启动（各环境）

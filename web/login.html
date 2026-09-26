@@ -311,6 +311,17 @@ body{background:#03060f;color:var(--txt);overflow:hidden;
           </div>
           {% endif %}
 
+          {% if totp_on %}
+          <label class="field" id="fTotp">
+            <span class="fl" data-i18n="lg.totp">动态验证码 (TOTP)</span>
+            <span class="ipt">
+              <svg class="ic" viewBox="0 0 24 24"><path d="M12 7v5l3 2"/><circle cx="12" cy="12" r="9"/></svg>
+              <input id="totp" name="totp" maxlength="6" inputmode="numeric" placeholder="6 位数字" data-i18n-ph="lg.totp.ph" autocomplete="one-time-code">
+            </span>
+            <span class="err" id="errTotp"></span>
+          </label>
+          {% endif %}
+
           <div class="row-between">
             <label class="remember">
               <input type="checkbox" id="remember"><span class="tick"></span>
@@ -384,6 +395,7 @@ var LI18N = {
     'lg.login.title':'控制台登录','lg.login.hint':'请输入账号与密码','lg.login.cap':' 以及右侧验证码',
     'lg.user':'账号','lg.user.ph':'请输入账号','lg.pwd':'密码','lg.pwd.ph':'请输入密码',
     'lg.code':'验证码','lg.code.ph':'4 位字符','lg.loading':'加载中','lg.capfail':'获取失败',
+    'lg.totp':'动态验证码 (TOTP)','lg.totp.ph':'6 位数字','lg.err.totp':'请输入 6 位动态验证码',
     'lg.remember':'记住此设备','lg.remember.days':' 天','lg.forgot':'忘记密码？',
     'lg.submit':'登 录','lg.submitting':'验证中','lg.tip':'提示',
     'lg.sso1':'本地凭证','lg.sso2':'验证码开关','lg.sso3':'免登录模式',
@@ -413,6 +425,7 @@ var LI18N = {
     'lg.login.title':'Console Login','lg.login.hint':'Enter your account and password','lg.login.cap':' plus the captcha on the right',
     'lg.user':'Account','lg.user.ph':'Enter account','lg.pwd':'Password','lg.pwd.ph':'Enter password',
     'lg.code':'Captcha','lg.code.ph':'4 characters','lg.loading':'Loading','lg.capfail':'Failed',
+    'lg.totp':'TOTP code','lg.totp.ph':'6 digits','lg.err.totp':'Enter the 6-digit code',
     'lg.remember':'Remember this device for','lg.remember.days':' days','lg.forgot':'Forgot password?',
     'lg.submit':'LOGIN','lg.submitting':'Verifying','lg.tip':'Tips',
     'lg.sso1':'Local creds','lg.sso2':'Captcha toggle','lg.sso3':'Passwordless',
@@ -1020,7 +1033,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var f = box.closest('.field');
     if (f) f.classList.toggle('bad', !!msg);
   }
-  function clearErrs() { setErr('#errUser', ''); setErr('#errPwd', ''); setErr('#errCode', ''); }
+  function clearErrs() { setErr('#errUser', ''); setErr('#errPwd', ''); setErr('#errCode', ''); setErr('#errTotp', ''); }
 
   /* ---------- 验证码 ---------- */
   var capImg = $('#capImg'), capSpin = $('#capSpin');
@@ -1084,11 +1097,14 @@ document.addEventListener('DOMContentLoaded', function(){
     var u = $('#user').value.trim(), p = $('#pwd').value, c = '';
     var codeEl = $('#code');
     if (codeEl) c = codeEl.value.trim().toUpperCase();
+    var totpEl = $('#totp');
+    var tcode = totpEl ? totpEl.value.trim() : '';
 
     var bad = false;
     if (!u) { setErr('#errUser', lt('lg.err.user')); bad = true; }
     if (!p) { setErr('#errPwd', lt('lg.err.pwd')); bad = true; }
     if (codeEl && c.length < 4) { setErr('#errCode', lt('lg.err.code')); bad = true; }
+    if (totpEl && tcode.length < 6) { setErr('#errTotp', lt('lg.err.totp')); bad = true; }
     if (bad) { card.classList.add('shake'); setTimeout(function () { card.classList.remove('shake'); }, 560); return; }
 
     btn.classList.add('loading');
@@ -1098,7 +1114,7 @@ document.addEventListener('DOMContentLoaded', function(){
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        user: u, pwd: p, code: c,
+        user: u, pwd: p, code: c, totp: tcode,
         remember: $('#remember').checked,
         next: $('#nextUrl').value || '/'
       })
@@ -1106,7 +1122,7 @@ document.addEventListener('DOMContentLoaded', function(){
       btn.classList.remove('loading');
       btn.disabled = false;
       if (!d.success) {
-        if (d.field) setErr(d.field === 'pwd' ? '#errPwd' : (d.field === 'code' ? '#errCode' : '#errUser'), d.message);
+        if (d.field) setErr(d.field === 'pwd' ? '#errPwd' : (d.field === 'code' ? '#errCode' : (d.field === 'totp' ? '#errTotp' : '#errUser')), d.message);
         else toast(d.message || lt('lg.fail'));
         if (d.refresh_captcha) refreshCap();
         if (codeEl) codeEl.value = '';

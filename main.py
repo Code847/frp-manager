@@ -17,7 +17,7 @@ import threading
 import subprocess
 import importlib
 
-VERSION = '1.13.2'
+from frp_manager import APP_VERSION as VERSION
 
 
 # ---------------------------------------------------------------------- #

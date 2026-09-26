@@ -19,11 +19,15 @@
     init_auth(app, config)
 """
 
+import base64
 import hashlib
+import hmac
 import io
+import ipaddress
 import os
 import random
 import secrets
+import struct
 import sys
 import time
 import urllib.parse
@@ -88,6 +92,28 @@ session_minutes = 0
 
 # 勾选「记住此设备」后保留的天数
 remember_days = 7
+
+# ---- 登录加固（v1.15.0）----
+# 登录失败限流：防止暴力破解
+login_rate_limit = false
+
+# 允许的最大连续失败次数（超过则锁定时长）
+max_fails = 5
+
+# 失败计数滑动窗口（分钟）：窗口外的失败不计
+fail_window_min = 15
+
+# 触发上限后锁定时长（分钟）
+lock_min = 30
+
+# 登录 IP 白名单：逗号 / 换行分隔，支持 CIDR（如 192.168.1.0/24）。为空=不限制
+ip_allowlist =
+
+# TOTP 二次验证（可选）：开启后登录需额外输入 6 位动态码
+totp_enabled = false
+
+# TOTP 密钥（base32），由「生成并启用」产生
+totp_secret =
 """
 
 
@@ -112,6 +138,9 @@ def load_auth_config(cfg=None):
     out = {
         'enabled': False, 'username': 'admin', 'password': 'admin',
         'captcha': True, 'session_minutes': 0, 'remember_days': 7,
+        'login_rate_limit': False, 'max_fails': 5, 'fail_window_min': 15,
+        'lock_min': 30, 'ip_allowlist': '', 'totp_enabled': False,
+        'totp_secret': '',
         'file': auth_file(cfg), '_ver': 'x',
     }
     path = ensure_default(cfg)
@@ -152,6 +181,14 @@ def load_auth_config(cfg=None):
     out['captcha'] = as_bool(get('captcha', 'true'), True)
     out['session_minutes'] = max(0, as_int(get('session_minutes', 0), 0))
     out['remember_days'] = max(1, as_int(get('remember_days', 7), 7))
+    out['login_rate_limit'] = as_bool(get('login_rate_limit', 'false'), False)
+    out['max_fails'] = max(1, as_int(get('max_fails', 5), 5))
+    out['fail_window_min'] = max(1, as_int(get('fail_window_min', 15), 15))
+    out['lock_min'] = max(1, as_int(get('lock_min', 30), 30))
+    raw_al = get('ip_allowlist', '') or ''
+    out['ip_allowlist'] = ','.join([x.strip() for x in raw_al.replace('\n', ',').split(',') if x.strip()])
+    out['totp_enabled'] = as_bool(get('totp_enabled', 'false'), False)
+    out['totp_secret'] = (get('totp_secret', '') or '').strip()
     out['_ver'] = hashlib.md5(
         (out['username'] + '\x00' + out['password']).encode('utf-8')
     ).hexdigest()[:12]
@@ -171,6 +208,13 @@ def save_auth_config(patch, cfg=None):
         'captcha': cur['captcha'],
         'session_minutes': cur['session_minutes'],
         'remember_days': cur['remember_days'],
+        'login_rate_limit': cur['login_rate_limit'],
+        'max_fails': cur['max_fails'],
+        'fail_window_min': cur['fail_window_min'],
+        'lock_min': cur['lock_min'],
+        'ip_allowlist': cur['ip_allowlist'],
+        'totp_enabled': cur['totp_enabled'],
+        'totp_secret': cur['totp_secret'],
     }
 
     for k, v in patch.items():
@@ -195,6 +239,21 @@ def save_auth_config(patch, cfg=None):
             new['session_minutes'] = max(0, int(v or 0))
         elif k == 'remember_days':
             new['remember_days'] = max(1, int(v or 7))
+        elif k == 'login_rate_limit':
+            new['login_rate_limit'] = bool(v)
+        elif k == 'max_fails':
+            new['max_fails'] = max(1, int(v or 5))
+        elif k == 'fail_window_min':
+            new['fail_window_min'] = max(1, int(v or 15))
+        elif k == 'lock_min':
+            new['lock_min'] = max(1, int(v or 30))
+        elif k == 'ip_allowlist':
+            s = str(v or '')
+            new['ip_allowlist'] = ','.join([x.strip() for x in s.replace('\n', ',').split(',') if x.strip()])
+        elif k == 'totp_enabled':
+            new['totp_enabled'] = bool(v)
+        elif k == 'totp_secret':
+            new['totp_secret'] = str(v or '').strip()
 
     txt = (
         "# FRP Manager · Web 控制台登录认证配置\n"
@@ -219,6 +278,22 @@ def save_auth_config(patch, cfg=None):
         "\n"
         "# 勾选「记住此设备」后保留的天数\n"
         "remember_days = %d\n"
+        "\n"
+        "# ---- 登录加固（v1.15.0）----\n"
+        "# 登录失败限流（防暴力破解）\n"
+        "login_rate_limit = %s\n"
+        "# 允许的最大连续失败次数\n"
+        "max_fails = %d\n"
+        "# 失败计数滑动窗口（分钟）\n"
+        "fail_window_min = %d\n"
+        "# 触发上限后锁定时长（分钟）\n"
+        "lock_min = %d\n"
+        "# 登录 IP 白名单：逗号/换行分隔，支持 CIDR；为空=不限制\n"
+        "ip_allowlist = %s\n"
+        "# TOTP 二次验证（可选）\n"
+        "totp_enabled = %s\n"
+        "# TOTP 密钥（base32，由「生成并启用」产生）\n"
+        "totp_secret = %s\n"
     ) % (
         'true' if new['enabled'] else 'false',
         new['username'],
@@ -226,6 +301,13 @@ def save_auth_config(patch, cfg=None):
         'true' if new['captcha'] else 'false',
         new['session_minutes'],
         new['remember_days'],
+        'true' if new['login_rate_limit'] else 'false',
+        new['max_fails'],
+        new['fail_window_min'],
+        new['lock_min'],
+        new['ip_allowlist'],
+        'true' if new['totp_enabled'] else 'false',
+        new['totp_secret'],
     )
 
     try:
@@ -256,6 +338,118 @@ def hash_password(plain):
         except Exception:
             pass
     return plain
+
+
+# ---------------------------------------------------------------- 登录加固（v1.15.0）
+
+# 限流状态（进程内，仅用于单实例面板；重启后自动清零，属可接受取舍）
+_FAIL = {}      # ip -> [失败时间戳, ...]
+_LOCK = {}      # ip -> 锁定到期时间戳
+
+
+def _client_ip():
+    """取真实客户端 IP（兼容反代 X-Forwarded-For）。"""
+    xff = (request.headers.get('X-Forwarded-For') or '').split(',')
+    if xff and xff[0].strip():
+        return xff[0].strip()
+    return request.remote_addr or '0.0.0.0'
+
+
+def _ip_allowed(client_ip, allowlist):
+    """allowlist 为空=不限制；否则需命中某个 IP 或 CIDR。"""
+    if not allowlist:
+        return True
+    ip = client_ip.strip()
+    if not ip:
+        return False
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    for item in allowlist.replace('\n', ',').split(','):
+        item = item.strip()
+        if not item:
+            continue
+        if item == ip:
+            return True
+        try:
+            if addr in ipaddress.ip_network(item, strict=False):
+                return True
+        except ValueError:
+            if item == ip:
+                return True
+    return False
+
+
+def _fail_count(ip, window_min):
+    now = time.time()
+    lst = _FAIL.get(ip)
+    if not lst:
+        return 0
+    cutoff = now - window_min * 60
+    lst[:] = [t for t in lst if t >= cutoff]
+    return len(lst)
+
+
+def _register_fail(ip):
+    _FAIL.setdefault(ip, []).append(time.time())
+
+
+def _is_locked(ip):
+    exp = _LOCK.get(ip)
+    if exp and time.time() < exp:
+        return exp
+    if exp:
+        _LOCK.pop(ip, None)
+    return 0
+
+
+def _lock(ip, minutes):
+    _LOCK[ip] = time.time() + minutes * 60
+
+
+def _clear_fails(ip):
+    _FAIL.pop(ip, None)
+    _LOCK.pop(ip, None)
+
+
+def totp_generate_secret():
+    """生成 RFC4226 base32 密钥（16 字节 = 32 字符，无需补齐）。"""
+    return base64.b32encode(os.urandom(16)).decode('ascii').rstrip('=')
+
+
+def totp_uri(secret, label='FRP Manager', issuer='FRP Manager'):
+    s = (secret or '').strip().rstrip('=')
+    return 'otpauth://totp/%s?secret=%s&issuer=%s&period=30&digits=6' % (
+        urllib.parse.quote(label), s, urllib.parse.quote(issuer))
+
+
+def _totp_at(secret, when=None, digits=6, period=30):
+    key = (secret or '').strip().upper()
+    if not key:
+        return None
+    pad = (8 - len(key) % 8) % 8
+    try:
+        k = base64.b32decode(key + '=' * pad)
+    except Exception:
+        return None
+    t = int(time.time() if when is None else when)
+    counter = t // period
+    msg = struct.pack('>Q', counter)
+    h = hmac.new(k, msg, hashlib.sha1).digest()
+    o = h[-1] & 0x0f
+    code = (struct.unpack('>I', h[o:o + 4])[0] & 0x7fffffff) % (10 ** digits)
+    return str(code).zfill(digits)
+
+
+def totp_verify(secret, code, window=1):
+    code = str(code or '').strip()
+    if not code.isdigit() or len(code) != 6:
+        return False
+    for w in range(-window, window + 1):
+        if _totp_at(secret, when=time.time() + w * 30) == code:
+            return True
+    return False
 
 
 # ---------------------------------------------------------------- 验证码
@@ -339,6 +533,7 @@ def login_page():
         'login.html',
         app_version=_app_version(),
         captcha_on=a['captcha'],
+        totp_on=a['totp_enabled'],
         next=nxt,
         remember_days=a['remember_days'],
         toast='',
@@ -389,15 +584,37 @@ def api_login():
     if not a['enabled']:
         return jsonify({'success': True, 'message': _m('未启用登录保护', 'Login protection is disabled'), 'redirect': '/'})
 
+    ip = _client_ip()
+
+    # 1) IP 白名单：不在名单直接拒绝（名单为空=不限制）
+    if not _ip_allowed(ip, a['ip_allowlist']):
+        return jsonify({'success': False,
+                        'message': _m('当前 IP 不在允许名单内，已拒绝登录',
+                                      'Your IP is not in the allowlist; login refused'),
+                        'field': 'pwd'}), 403
+
+    # 2) 失败限流：已锁定时直接拒绝，并提示剩余时长
+    lock_exp = _is_locked(ip)
+    if lock_exp:
+        remain = int((lock_exp - time.time()) / 60) + 1
+        return jsonify({'success': False,
+                        'message': _m('尝试次数过多，已临时锁定，请 %d 分钟后再试' % remain,
+                                      'Too many attempts; locked for %d minutes' % remain),
+                        'field': 'pwd'}), 429
+
     d = request.get_json(silent=True) or request.form or {}
     user = str(d.get('user') or '').strip()
     pwd = str(d.get('pwd') or '')
     code = str(d.get('code') or '').strip().upper()
+    totp_code = str(d.get('totp') or '').strip()
     remember = str(d.get('remember') or '') in ('1', 'true', 'True', 'on')
 
     time.sleep(0.35)   # 轻微限速，降低暴力破解可行性
 
     if not secrets.compare_digest(user, a['username']) or not password_ok(a['password'], pwd):
+        _register_fail(ip)
+        if a['login_rate_limit'] and _fail_count(ip, a['fail_window_min']) >= a['max_fails']:
+            _lock(ip, a['lock_min'])
         session.pop('cap', None)
         return jsonify({'success': False, 'message': _m('账号或密码不正确', 'Incorrect username or password'),
                         'field': 'pwd', 'refresh_captcha': True})
@@ -410,6 +627,19 @@ def api_login():
             return jsonify({'success': False, 'message': _m('验证码不正确或已过期', 'Captcha is incorrect or expired'),
                             'field': 'code', 'refresh_captcha': True})
 
+    # 3) TOTP 二次验证（可选）
+    if a['totp_enabled']:
+        if not totp_verify(a['totp_secret'], totp_code):
+            _register_fail(ip)
+            if a['login_rate_limit'] and _fail_count(ip, a['fail_window_min']) >= a['max_fails']:
+                _lock(ip, a['lock_min'])
+            session.pop('cap', None)
+            return jsonify({'success': False,
+                            'message': _m('动态验证码不正确', 'Invalid TOTP code'),
+                            'field': 'totp', 'refresh_captcha': True})
+
+    # 通过：清掉失败计数
+    _clear_fails(ip)
     session.pop('cap', None)
     session.pop('cap_exp', None)
     session['auth_user'] = a['username']
@@ -473,6 +703,75 @@ def api_auth_config():
     return jsonify({'success': True, 'message': msg,
                     'enabled': new['enabled'], 'captcha': new['captcha'],
                     'username': new['username']})
+
+
+def _api_security_get():
+    a = load_auth_config(_CONFIG)
+    out = {
+        'success': True,
+        'login_rate_limit': a['login_rate_limit'],
+        'max_fails': a['max_fails'],
+        'fail_window_min': a['fail_window_min'],
+        'lock_min': a['lock_min'],
+        'ip_allowlist': a['ip_allowlist'],
+        'totp_enabled': a['totp_enabled'],
+        'totp_has_secret': bool(a['totp_secret']),
+        'file': a['file'],
+    }
+    return jsonify(out)
+
+
+def _api_security_post():
+    d = request.get_json(silent=True) or request.form or {}
+    patch = {}
+    for k in ('login_rate_limit', 'max_fails', 'fail_window_min', 'lock_min'):
+        if k in d:
+            patch[k] = d.get(k)
+    if 'ip_allowlist' in d:
+        patch['ip_allowlist'] = d.get('ip_allowlist')
+    # 注意：不要在这里接受 totp_enabled=False —— 关闭 TOTP 必须走 /api/auth/totp/disable
+    new, msg = save_auth_config(patch, _CONFIG)
+    return jsonify({'success': True, 'message': _m('登录加固设置已保存', 'Login hardening saved'),
+                    'login_rate_limit': new['login_rate_limit'],
+                    'max_fails': new['max_fails'],
+                    'fail_window_min': new['fail_window_min'],
+                    'lock_min': new['lock_min'],
+                    'ip_allowlist': new['ip_allowlist']})
+
+
+def _api_totp_setup():
+    """生成新密钥与 otpauth URI（尚未启用），供前端展示。"""
+    secret = totp_generate_secret()
+    return jsonify({'success': True, 'secret': secret,
+                    'uri': totp_uri(secret),
+                    'label': 'FRP Manager'})
+
+
+def _api_totp_enable():
+    d = request.get_json(silent=True) or request.form or {}
+    secret = str(d.get('secret') or '').strip()
+    code = str(d.get('code') or '').strip()
+    if not secret or not code:
+        return jsonify({'success': False, 'message': _m('缺少密钥或验证码', 'Missing secret or code')}), 400
+    if not totp_verify(secret, code):
+        return jsonify({'success': False, 'message': _m('验证码不正确，请确认时间同步后重试', 'Invalid code; check time sync')}), 400
+    new, msg = save_auth_config({'totp_secret': secret, 'totp_enabled': True}, _CONFIG)
+    return jsonify({'success': True, 'message': _m('TOTP 二次验证已启用', 'TOTP 2FA enabled')})
+
+
+def _api_totp_disable():
+    """关闭 TOTP（仍保留密钥，便于下次快速重新启用）。"""
+    new, msg = save_auth_config({'totp_enabled': False}, _CONFIG)
+    return jsonify({'success': True, 'message': _m('TOTP 二次验证已关闭', 'TOTP 2FA disabled')})
+
+
+# 注册新端点（在 init_auth 内统一挂到 blueprint 上）
+SECURITY_ROUTES = [
+    ('/api/auth/security', ['GET', 'POST'], {'GET': _api_security_get, 'POST': _api_security_post}),
+    ('/api/auth/totp/setup', ['GET'], {'GET': _api_totp_setup}),
+    ('/api/auth/totp/enable', ['POST'], {'POST': _api_totp_enable}),
+    ('/api/auth/totp/disable', ['POST'], {'POST': _api_totp_disable}),
+]
 
 
 # ---------------------------------------------------------------- 守卫
@@ -591,8 +890,46 @@ def init_auth(app, config):
     app.jinja_env.globals.setdefault('auth_enabled', lambda: load_auth_config(_CONFIG)['enabled'])
 
     ensure_default(_CONFIG)
+    # 登录加固 / TOTP 端点（v1.15.0）：必须在 register_blueprint 之前加规则，
+    # 一旦蓝图已注册，Flask 就不再允许追加 —— 那会让整段初始化抛异常、登录端点全部失效。
+    # 注意：每个「规则×方法」都要有独立 endpoint。Flask 不允许同一个 endpoint
+    # 挂两个不同函数，否则整段 register_blueprint 会抛 AssertionError，
+    # 导致登录保护与所有端点一起失效。
+    for rule, methods, view_map in SECURITY_ROUTES:
+        for m in methods:
+            ep = 'sec' + rule.replace('/', '_').strip('_') + '_' + m.lower()
+            auth_bp.add_url_rule(rule, endpoint=ep, view_func=view_map[m], methods=[m])
     app.register_blueprint(auth_bp)
-    app.before_request(_guard)
+
+    # IP 白名单：在守卫最前置生效（白名单为空=不限制）。
+    # 例外：登录页 / 验证码 / 登录接口 / 静态资源 永远可访问，避免把自己关在门外；
+    # 另放开 /api/auth/security 与 TOTP 端点，便于误配后自行修正。
+    _OPEN_PREFIX_extra = (
+        # 登录加固 / TOTP：便于误配后自行修正
+        '/api/auth/security', '/api/auth/totp/setup',
+        '/api/auth/totp/enable', '/api/auth/totp/disable',
+        # PWA 资源：必须免登录可访问，否则「添加到主屏幕」拿不到 manifest / sw.js
+        '/sw.js', '/manifest.webmanifest', '/icon.svg',
+    )
+
+    def _guard_hardened():
+        a = load_auth_config(_CONFIG)
+        if not a['enabled']:
+            return None
+        p = request.path
+        for pre in _OPEN_PREFIX + _OPEN_PREFIX_extra:
+            if p.startswith(pre):
+                return None
+        # IP 白名单前置拦截（仅当启用了登录保护且配置非空）
+        if a['ip_allowlist'] and not _ip_allowed(_client_ip(), a['ip_allowlist']):
+            if _need_json() or p.startswith('/api/'):
+                return jsonify({'success': False,
+                               'message': _m('当前 IP 不在允许名单内', 'Your IP is not in the allowlist'),
+                               'need_login': True}), 403
+            return redirect('/login?err=1'), 403
+        return _guard()
+
+    app.before_request(_guard_hardened)
     return app
 
 
