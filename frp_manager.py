@@ -6,6 +6,7 @@ FRP 管理核心模块（跨平台 / 支持 ARM Linux）
 - ARM 版 Ubuntu（aarch64）与 32 位 ARM（armv7l）均可直接使用
 - 下载支持多镜像回退、tar.gz / zip 自动解压、自动 chmod +x
 """
+import io
 import os
 import re
 import sys
@@ -36,7 +37,7 @@ except ImportError:  # 允许在没装 requests 时仍能导入（由 main.py �
 DEFAULT_FRP_VERSION = '0.71.0'
 
 # 程序自身版本（v1.14.0 起集中于此，main.py 从本模块导入，避免多处漂移）
-APP_VERSION = '1.16.0'
+APP_VERSION = '1.17.0'
 
 # 面板自更新（v1.14.0）：官方发布仓库与更新包资产名
 UPDATE_REPO = 'Code847/frp-manager'
@@ -149,6 +150,15 @@ DOMESTIC_MIRRORS = {
 }
 # 兼容旧引用
 GITHUB_MIRRORS = [GITHUB_URL] + list(DOMESTIC_MIRRORS.values())
+
+# ===== 界面主题模板（v1.17.0）=====
+# 这里只定义「哪些模板 id 合法」与默认值，供设置读写做校验；
+# 每套模板的 CSS 变量在 web_ui.UI_THEMES 里定义（那里是前端相关的东西）。
+# 两个列表必须一一对应，新增模板时两处都要加。
+UI_THEME_IDS = ('tech', 'midnight', 'aurora', 'frost', 'contrast')
+DEFAULT_UI_THEME = 'tech'
+UI_MODE_IDS = ('light', 'dark')
+
 
 # platform.machine() -> frp 官方发布包的架构后缀
 ARCH_ALIASES = {
@@ -753,6 +763,8 @@ class FRPManager:
             'alert_email_user': '', 'alert_email_pass': '', 'alert_email_to': '',
             # 界面语言
             'lang': 'zh',
+            # 界面主题（v1.17.0 模板库）：ui_theme=模板 id，ui_mode=该模板下的明暗
+            'ui_theme': DEFAULT_UI_THEME, 'ui_mode': 'light',
             # 面板自更新（v1.14.0）：自定义更新源 manifest URL（空=官方 GitHub Releases）
             'update_source': '',
             # 配置快照（P3-⑦）：保存配置时自动生成快照，可回滚
@@ -782,10 +794,21 @@ class FRPManager:
                     v = cp.get('autostart', 'autostart_mode').strip().lower()
                     if v in ('user', 'system'):
                         out['autostart_mode'] = v
-            if cp.has_section('ui') and cp.has_option('ui', 'lang'):
-                v = cp.get('ui', 'lang').strip().lower()
-                if v in ('zh', 'en'):
-                    out['lang'] = v
+            if cp.has_section('ui'):
+                if cp.has_option('ui', 'lang'):
+                    v = cp.get('ui', 'lang').strip().lower()
+                    if v in ('zh', 'en'):
+                        out['lang'] = v
+                # 主题：只接受已知 id，配置里被手改成别的值时静默回退默认，
+                # 否则会渲染出一个没有任何变量覆盖的「半裸」界面
+                if cp.has_option('ui', 'theme'):
+                    v = cp.get('ui', 'theme').strip().lower()
+                    if v in UI_THEME_IDS:
+                        out['ui_theme'] = v
+                if cp.has_option('ui', 'mode'):
+                    v = cp.get('ui', 'mode').strip().lower()
+                    if v in UI_MODE_IDS:
+                        out['ui_mode'] = v
             if cp.has_section('download') and cp.has_option('download', 'mirror'):
                 out['mirror'] = cp.get('download', 'mirror').strip() or 'auto'
             if cp.has_section('monitor'):
@@ -853,6 +876,8 @@ class FRPManager:
             cp.set('autostart', 'autostart_mode', str(merged.get('autostart_mode', 'user')))
             cp.add_section('ui')
             cp.set('ui', 'lang', str(merged.get('lang', 'zh')))
+            cp.set('ui', 'theme', str(merged.get('ui_theme', DEFAULT_UI_THEME)))
+            cp.set('ui', 'mode', str(merged.get('ui_mode', 'light')))
             cp.add_section('download')
             cp.set('download', 'mirror', str(merged.get('mirror', 'auto')))
             cp.add_section('snapshot')
@@ -1674,11 +1699,56 @@ class FRPManager:
         except (TypeError, ValueError):
             return None
 
+    @staticmethod
+    def _tail_lines(path, n, block=65536):
+        """从文件**尾部**反向按块读，只返回最后 n 行。
+
+        为什么不直接 f.read()：
+        日志页每 5 秒轮询一次，而轮转上限是 5MB × 5 份（用户也可能改大）。
+        整读一次意味着「把整个文件读进内存 + splitlines 成几十万个 str 对象 +
+        排序几十万条元组」，峰值内存是文件大小的数倍，而且是**每 5 秒重复一次**。
+        从尾部读则内存恒定在「一个块 + n 行」，与文件大小无关。
+
+        n <= 0 表示「全部」，此时只能整读（前端传 lines=all 才会走到）。
+        """
+        if n <= 0:
+            try:
+                with io.open(path, 'r', encoding='utf-8', errors='ignore') as f:
+                    return f.read().splitlines()
+            except OSError:
+                return []
+        try:
+            size = os.path.getsize(path)
+        except OSError:
+            return []
+        if size <= 0:
+            return []
+        data = b''
+        pos = size
+        try:
+            with io.open(path, 'rb') as f:
+                while pos > 0:
+                    read_sz = min(block, pos)
+                    pos -= read_sz
+                    f.seek(pos)
+                    data = f.read(read_sz) + data
+                    # 多读一行余量，避免把最后一行切掉
+                    if data.count(b'\n') > n:
+                        break
+        except OSError:
+            return []
+        # UTF-8 的多字节序列里不会出现 0x0A，所以按 \n 切字节是安全的
+        out = [x.decode('utf-8', 'ignore') for x in data.splitlines()]
+        return out[-n:] if n > 0 else out
+
     def read_frp_log(self, mode='all', lines=100):
         """读取日志并按来源打标。
 
         mode='client' 只看 frpc，'server' 只看 frps，'all' 则按时间戳把两者
         合并成一条时间线，每行前缀 [frpc] / [frps]，便于区分来源。
+
+        只读每个文件的末尾 lines 行再归并 —— 全局最后 N 行必然落在各文件
+        自己的最后 N 行里，所以结果与整读完全一致，只是不再把全文搬进内存。
         """
         try:
             files = self.log_files(mode)
@@ -1689,13 +1759,11 @@ class FRPManager:
             entries = []
             for fi, path in enumerate(files):
                 tag = self.log_tag(path)
-                try:
-                    with open(path, 'r', encoding='utf-8', errors='ignore') as f:
-                        content = f.read()
-                except OSError:
+                raw_lines = self._tail_lines(path, lines)
+                if not raw_lines:
                     continue
                 last_key = (0,)
-                for li, raw in enumerate(content.splitlines()):
+                for li, raw in enumerate(raw_lines):
                     line = self.ANSI_RE.sub('', raw)
                     if not line.strip():
                         continue

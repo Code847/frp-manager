@@ -59,7 +59,7 @@ A clean and efficient cross-platform FRP management tool with a Web UI for confi
 - ✅ **Light & dark themes** - consistent styling across controls
 - ✅ **Per-page lazy loading** - only the current page fetches data; polling skipped when hidden
 - ✅ **Bilingual UI** - built-in Chinese / English switch (🌐 in the top bar)
-- ✅ **Login hardening** - failed-login rate limiting, IP allowlist (CIDR), optional TOTP 2FA (RFC6238)
+- ✅ **Login hardening** - failed-login rate limiting, IP allowlist (CIDR, one-click LAN address add), TOTP 2FA you can toggle any time (RFC6238, pure Python)
 - ✅ **Per-platform binary downloads** - 9 OS/arch targets, SHA256 verification, resume support, "download only, don't install"
 - ✅ **PWA** - add to Home Screen / desktop icon; shell works offline, live data always from network
 - ✅ **Keyboard shortcuts** - `?` help, `/` focus filter, `Esc` close, `Ctrl+S` save, `Ctrl+D` refresh
@@ -139,10 +139,14 @@ Default account `admin` / `admin` — change it in "Web Settings → Login" or b
 
 ### 🛡️ Login Hardening (v1.15.0)
 
-A `[security]` section in the same file, **all off by default, applied immediately, no restart needed**:
+> ⚠️ These keys live in the **`[auth]`** section together with the credentials —
+> there is no separate `[security]` section. Older docs said otherwise; reading
+> `[security]` is still tolerated, but the UI always writes `[auth]`.
+
+**All off by default, applied immediately, no restart needed**:
 
 ```ini
-[security]
+[auth]
 login_rate_limit = false   # master switch for failed-login limiting
 max_fails         = 5      # failures inside the window
 fail_window_min   = 15     # statistics window (minutes)
@@ -157,8 +161,13 @@ UI: **Security Center → Login Hardening** (same page as the account settings).
 | Option | Description |
 |------|-------------|
 | **Failed-login limiting** | Counts failures per IP; after `max_fails` inside the window, that IP is rejected for `lock_min` minutes. Counters live in memory and reset on restart. |
-| **IP allowlist (CIDR)** | Accepts `192.168.1.0/24`, `10.0.0.0/8` and friends. Allowlisted IPs **bypass everything, even the failure counter**, so a bad config can never lock you out. |
+| **IP allowlist (CIDR)** | Accepts `192.168.1.0/24`, `10.0.0.0/8` and friends. Allowlisted IPs **bypass everything, even the failure counter**.
+  * The UI lists this machine's own addresses, each with **"Add to allowlist"** and **"Add whole subnet (/24)"** buttons — you never have to guess what to type.
+  * It also shows your current source IP, and warns in advance ("saving will lock you out") if the list doesn't contain it.
+  * When blocked, you get a `/blocked` page with the exact steps to recover — not a bare 403. |
 | **TOTP 2FA** | RFC6238 implemented in pure Python (no third-party package). "Set up TOTP" shows a secret plus an `otpauth://` URI for Authenticator / 1Password; once enabled, a 6-digit code is required at login. |
+
+  You can turn it **off and back on at any time**: disabling keeps the secret, so re-enabling only asks for the 6-digit code currently shown in your authenticator (no re-scan). After 8 wrong codes the endpoint rate-limits for 15 minutes, so the 6-digit space can't be brute-forced.
 
 > Back up the TOTP secret after enabling — losing it means disabling 2FA and re-binding.
 
@@ -308,18 +317,49 @@ frp-manager/
 
 Shortcuts are ignored while typing in an input, textarea or select.
 
-## 📦 Windows Packaging (v1.16.0)
+## 🛡️ Login Hardening Notes (v1.16.1)
 
-Build a standalone exe or a full installer:
+- The hardening keys live in the **`[auth]`** section next to the credentials. An older revision of this document said `[security]` — reading `[security]` is still tolerated, but the UI always writes `[auth]`.
+- The IP allowlist UI lists this machine's reachable addresses with one-click "add" buttons, shows your current source IP, and warns before you save a list that would lock you out.
+- Blocked requests land on `/blocked`, which explains how to get back in instead of returning an unexplained 403.
+
+## 📦 Single-file Packaging (build_exe.py)
+
+Build a standalone executable that needs no Python on the target machine:
 
 ```bash
 pip install -r requirements.txt pyinstaller
 
-python build_exe.py            # -> dist\FRP-Manager-<timestamp>.exe  (~34 MB)
-python build_exe.py --onedir   # debug build: console output, faster startup
+python build_exe.py                      # -> dist/FRP-Manager-<platform>-<timestamp>
+python build_exe.py --onedir             # debug build: console output, faster startup
+python build_exe.py --list-targets       # list buildable targets
+python build_exe.py --target linux_arm64 # name the target explicitly
 
-build_installer.bat            # -> Output\FRP-Manager-<version>-Setup.exe
+build_installer.bat            # -> Output\FRP-Manager-<version>-Setup.exe  (Windows only)
 ```
+
+Accepted `--target` values (hyphens and underscores both work):
+`windows_amd64` / `windows_arm64` / `windows_386` / `linux_amd64` / `linux_arm64` /
+`linux_arm` / `linux_386` / `darwin_amd64` / `darwin_arm64`; default `auto`
+(detected from the current machine).
+
+> ⚠️ **PyInstaller cannot cross-compile.** It bundles the *current* Python
+> interpreter, so a Windows machine can never produce a Linux ELF, and an amd64
+> machine can never produce an arm64 binary.
+> `--target` only declares **which pair of frp binaries** to bundle; when it does
+> not match the current machine the script **fails loudly (exit code 2)** rather
+> than silently emitting something that won't run.
+>
+> To ship Linux builds, run this script on a Linux host, or build them in a CI
+> matrix (`.github/workflows/` is not wired up yet — see the roadmap).
+>
+> Also: `--windowed` is applied on Windows only. Linux servers are usually
+> headless (systemd / ssh), and hiding the console there removes the only
+> diagnostic output you have when it fails to start.
+
+Artifacts are named with the platform (`FRP-Manager-linux_arm64-20260927_120000`),
+so repeated builds on one machine don't overwrite each other and the right file
+is obvious when distributing.
 
 The packaged resources are deliberately **clean**:
 
@@ -413,6 +453,76 @@ If this project helps you, buying the author a coffee is appreciated —
 *WeChat scan to donate · every bit is appreciated ❤️*
 
 </div>
+
+## 📝 Changelog
+
+> Full Chinese changelog lives at the bottom of [`README.md`](README.md) — this is the English summary.
+
+### v1.17.0
+- **Interface theme library**: a new "Interface Theme" section in System Settings ships 5 colour templates (Tech Blue / Midnight Violet / Aurora Green / Frost Glass / High Contrast). One click re-skins the panel; template and light/dark are stored independently in `configs/app_settings.ini [ui] theme / mode` and survive restarts
+  - Themes live in the backend; the frontend only flips `data-theme` / `data-mode` on `<body>` — **no other CSS was touched**, so switching templates cannot regress layout
+  - Variables are generated by "palette + derivation": hand-writing 33 variables per theme is easy to get wrong, and a missing variable **silently falls back to `:root`**, which shows up as a half-naked UI and is very hard to trace because CSS never errors. The derivation function guarantees every theme gets the identical variable-name set
+  - The current theme's variables are inlined server-side, so there's no flash of unstyled content
+  - Upgrade path: v1.16.x and earlier stored light/dark directly in `data-theme`; that is migrated to `data-mode` automatically, so dark mode doesn't silently reset
+- **Performance (memory and speed)**
+  - **Logs are no longer read whole**: `read_frp_log()` used to `f.read()` the entire file, `splitlines()` it, sort everything, then keep the last N lines — a memory spike every 5 seconds, since the log page polls that often. Now it reads **backwards from the end of the file in blocks**. On a 22 MB log: peak memory **66.38 MB -> 0.23 MB**, time **1.553 s -> 0.005 s**, byte-identical output
+  - **Response compression**: text responses are gzipped; `index.html` goes 380 KB -> **93 KB (-76%)** — the single most noticeable win over LAN or the internet
+  - **Page template caching**: `index.html` is 380 KB and used to be `open + read + Jinja-render` on every home page load. Now cached by mtime+size and invalidated the moment the file changes
+  - **Config parse caching**: `/api/status` re-parsed both frp configs for port mappings on every call; also cached by mtime now
+- **Tech-style polish**: neon bar on section headings, glow spread on the top gradient rule, hover outline on status cards, inner glow on the active sidebar item, instrument-like tracking on table headers. All **decorative** — no box-model width/height/position changes
+- **`build_exe.py --target`**: 9 explicit target platforms; artifacts are named with the platform so builds don't overwrite each other
+  - ⚠️ **PyInstaller cannot cross-compile**, so it cannot produce binaries for other platforms; when `--target` doesn't match the current machine the script **fails loudly (exit code 2)** rather than silently emitting something that won't run. **Linux single-file builds need a Linux host or CI**
+  - `--windowed` applies on Windows only — Linux servers are usually headless, and hiding the console removes the only diagnostic output when it fails to start
+- **QA pipeline extended to 16 stages**: new theme-library, performance, and packaging-script gates
+
+### v1.16.1
+- **IP allowlist no longer guesswork**: the panel lists this machine's usable addresses, each with "Add to allowlist" and "Add whole subnet (`/24`)" buttons; shows the current source IP; warns *"you will be locked out after saving"* when the list excludes it
+- **Blocked requests get a next step**: allowlist rejection changed from `403 + redirect` (browsers don't follow it, so users saw a blank page) to a `302 -> /blocked` explainer with local addresses and recovery steps
+- **TOTP can be disabled and re-enabled anytime**: the secret is kept on disable; re-enabling only needs the current 6-digit code (no re-scan). 8 wrong codes in 15 minutes triggers rate limiting
+- **Fixed doc/code section mismatch**: docs said `[security]`, code only read `[auth]` — hand-edited configs silently did nothing. Code now reads both; docs standardized to `[auth]`
+- **Removed test leftovers**: the sample IP `114.132.239.35` is gone; default address is `127.0.0.1`
+- **QA pipeline extended to 12 stages**: allowlist/TOTP logic, HTTP-layer, and real-browser UI tests
+
+### v1.16.0
+- **Single-file exe distribution**: `build_exe.py` produces a standalone exe (~34 MB) that needs no Python installed; `build_installer.bat` wraps it into an Inno Setup installer
+- **Packaging hygiene**: only `configs/README.md` (a clean template) and the current platform's two frp binaries are bundled — no more leaking the build machine's credentials, no more 137 MB of cross-platform binaries
+- **Fixed double-nested binary path**: frp binaries were silently re-downloaded from GitHub instead of erroring out
+- **Fixed "config security scan never ran"**: an instance was calling module-level `_m()` / `_msg_lang()` and the `AttributeError` was swallowed by `except`
+- **Two new QA gates**: startup-path self-check (19 call sites asserted) and installer-script static check
+
+### v1.15.0
+- **Login hardening**: failed-login rate limiting, IP allowlist (CIDR), TOTP 2FA (RFC 6238, pure Python); stored in `configs/web_auth.ini [auth]`, effective immediately
+- **Per-platform binary download**: 9 OS/arch targets + SHA256 verification + resumable downloads; non-native targets land in `packages/` and are never installed
+- **Lower config barrier**: proxy editor gains presets (ssh/rdp/web/db), inline validation, one-click row clone
+- **PWA**: installable to home screen / desktop, static assets cached offline, API responses never cached
+- **Polish**: global shortcuts (`?` `/` `Esc` `Ctrl+S` `Ctrl+D`) + accessibility (skip link, `focus-visible`, aria/role)
+
+### v1.14.0
+- **Panel self-update**: one-click upgrade with automatic full backup, code-only overlay (never touches `configs / logs / temp / bin`), one-click rollback, in-place restart
+- **Dual update sources**: official GitHub Releases (anonymous) or a custom manifest URL (`{version, notes, url, sha256?}`)
+- **Version centralised**: `main.py` imports `VERSION` from `frp_manager.APP_VERSION`
+
+### v1.13.x
+- **v1.13.2**: login page can switch zh/en; multi-line text nodes translated line by line; `MutationObserver` fallback for late-rendered content; unified tech-style button palette
+- **v1.13.1**: fixed the dead language-toggle button; completed UI translation coverage
+- **v1.13.0**: scheduled restart for frpc/frps (interval or daily time); bilingual README
+
+### v1.12.0 – v1.7.0
+- **v1.12.0**: version picker popup, segmented control for 2-option selects, fixed dead "apply template" button, unified all dropdowns
+- **v1.11.0**: pages split by role; `/api/status` sped up from ~1 s to 5.75 ms (was scanning all system processes 6× per request)
+- **v1.10.0**: fixed the completely broken proxy editor; audit log promoted to its own page; per-page lazy loading
+- **v1.9.0**: config snapshots with rollback; frp token / encryption wizard; bundled frp upgraded to v0.71.0 (CVE-2026-40910)
+- **v1.8.0**: traffic & resource monitoring; form-based proxy editor; config template library; autostart enhancements; zh/en toggle
+- **v1.7.0**: process watchdog; config security scan; log rotation & export; offline package import; audit log; offline alerting
+
+### v1.6.0 – v1.0.0
+- **v1.6.0**: autostart per platform, download progress bar, China-friendly download mirrors
+- **v1.5.0**: fixed tray badge showing the wrong state; three-colour badge; silent `start.bat`
+- **v1.4.0**: admin API section rebuilt; Basic Auth credentials editable; one-click curl copy
+- **v1.3.0**: UI consolidated into single files (`web/index.html`, `web/login.html`); live connection info on top; log colouring by source
+- **v1.2.0**: three-colour sidebar status, two-level nav tree, web login + captcha + sessions
+- **v1.1.0**: auto-detect frps dashboard / API info; dual ini/toml parsing
+- **v1.0.0** (2026-03-05): initial release
 
 ## 🤝 Contributing
 

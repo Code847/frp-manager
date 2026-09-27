@@ -5,11 +5,12 @@ import sys
 import time
 import socket
 import threading
+import gzip as _gzip
 from flask import (Flask, render_template_string, request, jsonify,
                    send_from_directory, has_request_context, make_response)
 
 # 导入FRP管理器
-from frp_manager import FRPManager
+from frp_manager import FRPManager, DEFAULT_UI_THEME
 
 app = Flask(__name__)
 
@@ -52,6 +53,326 @@ def _m(zh, en=None):
     if _msg_lang() != 'en':
         return zh
     return en if en else zh
+
+
+# ---------------------------------------------------------------- 界面主题模板库（v1.17.0）
+# 每套模板 = 一组 CSS 变量，分 light / dark 两版。切换模板只是改 <body> 上的
+# data-theme / data-mode 两个属性，其余 CSS 全部走 var()，一行都不用动。
+#
+# 为什么用「色板 + 派生」而不是每套手写 33 个变量：手写极易漏，而漏掉的变量
+# 会**静默回退到 :root 的默认值** —— 表现是「切到某套模板后界面半裸、颜色乱套」，
+# CSS 又不报错，极难排查。派生函数保证每套拿到的变量名集合完全一致。
+
+# 变量全集。新增变量时必须加到这里，否则派生函数产出的键会与 CSS 用到的一致不了。
+_UI_VAR_NAMES = (
+    '--bg', '--body-grad', '--container-bg', '--container-shadow',
+    '--panel', '--panel2', '--panel3', '--line', '--line-strong', '--card-shadow',
+    '--txt', '--txt2', '--txt3', '--cyan', '--indigo', '--green', '--amber', '--red',
+    '--input-bg', '--input-txt', '--focus-shadow',
+    '--log-bg', '--log-txt', '--th-bg',
+    '--sidebar-bg', '--sidebar-txt', '--grid-line',
+    '--chip-bg', '--chip-border', '--sel-arrow', '--scroll-thumb',
+    '--radius', '--sidebar-w',
+)
+
+
+def _sel_arrow(hex_color):
+    """下拉箭头的 SVG data URI。
+
+    '#' 必须写成 %23、'<' / '>' 必须写成 %3C / %3E，否则会截断 CSS 的 url("...")，
+    表现为下拉框箭头整块消失（不报错，只是没有箭头）。
+    """
+    c = str(hex_color).lstrip('#')
+    svg = ("%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' "
+           "viewBox='0 0 24 24' fill='none' stroke='%23" + c + "' stroke-width='2.6' "
+           "stroke-linecap='round' stroke-linejoin='round'%3E"
+           "%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")
+    return 'url("' + svg + '")'
+
+
+def _derive_vars(pal, mode):
+    """色板 -> 完整变量字典。
+
+    pal 里给的键一律优先；没给的按 mode 派生兜底。返回的键集合恒等于
+    _UI_VAR_NAMES —— 这是「不会漏变量」的保证。
+    """
+    dark = (mode == 'dark')
+    glow, glow2 = pal['glow'], pal['glow2']
+    panel, panel2, panel3 = pal['panel'], pal['panel2'], pal['panel3']
+
+    if dark:
+        a_body1, a_body2 = '0.18', '0.12'
+        a_ls, a_grid, a_focus = '0.34', '0.05', '0.10'
+        a_chip, a_chipb, a_scroll = '0.08', '0.18', '0.28'
+        container_bg = 'linear-gradient(180deg,' + panel + ',' + panel3 + ')'
+        container_shadow = '0 24px 80px rgba(0,0,0,.45)'
+        card_shadow = '0 8px 30px rgba(0,0,0,.28)'
+        sidebar_bg = 'linear-gradient(180deg,' + panel2 + ',' + panel3 + ')'
+    else:
+        a_body1, a_body2 = '0.10', '0.07'
+        a_ls, a_grid, a_focus = '0.45', '0.05', '0.14'
+        a_chip, a_chipb, a_scroll = '0.10', '0.22', '0.32'
+        container_bg = panel
+        container_shadow = '0 18px 50px rgba(20,40,80,.10)'
+        card_shadow = '0 6px 22px rgba(20,40,80,.07)'
+        sidebar_bg = 'linear-gradient(180deg,' + panel + ',' + panel2 + ')'
+
+    v = {
+        '--bg': pal['bg'],
+        '--body-grad': (
+            'radial-gradient(1200px 700px at 82% -10%,rgba({g},{a}),transparent 60%),'
+            'radial-gradient(900px 600px at -10% 110%,rgba({g2},{a2}),transparent 55%)'
+        ).format(g=glow, a=a_body1, g2=glow2, a2=a_body2),
+        '--container-bg': container_bg,
+        '--container-shadow': container_shadow,
+        '--panel': panel,
+        '--panel2': panel2,
+        '--panel3': panel3,
+        '--line': pal['line'],
+        '--line-strong': 'rgba({g},{a})'.format(g=glow, a=a_ls),
+        '--card-shadow': card_shadow,
+        '--txt': pal['txt'],
+        '--txt2': pal['txt2'],
+        '--txt3': pal['txt3'],
+        '--cyan': pal['cyan'],
+        '--indigo': pal['indigo'],
+        '--green': pal['green'],
+        '--amber': pal['amber'],
+        '--red': pal['red'],
+        '--input-bg': pal['input_bg'],
+        '--input-txt': pal['input_txt'],
+        '--focus-shadow': 'rgba({g},{a})'.format(g=glow, a=a_focus),
+        '--log-bg': pal['log_bg'],
+        '--log-txt': pal['log_txt'],
+        '--th-bg': panel2,
+        '--sidebar-bg': sidebar_bg,
+        '--sidebar-txt': pal['txt2'],
+        '--grid-line': 'rgba({g},{a})'.format(g=glow, a=a_grid),
+        '--chip-bg': 'rgba({g},{a})'.format(g=glow, a=a_chip),
+        '--chip-border': 'rgba({g},{a})'.format(g=glow, a=a_chipb),
+        '--sel-arrow': _sel_arrow(pal['arrow']),
+        '--scroll-thumb': 'rgba({g},{a})'.format(g=glow, a=a_scroll),
+        '--radius': '14px',
+        '--sidebar-w': '248px',
+    }
+    # 色板里的可选覆盖（键名与变量名一致，如 '--container-bg'），用于精调
+    for name in _UI_VAR_NAMES:
+        if name in pal:
+            v[name] = pal[name]
+    missing = [n for n in _UI_VAR_NAMES if n not in v]
+    if missing:
+        raise ValueError('主题派生漏了变量: %s' % ', '.join(missing))
+    return v
+
+
+# 五套模板。glow / glow2 是 'r,g,b' 形式（用于所有半透明派生），arrow 是 '#rrggbb'。
+UI_THEMES = (
+    {
+        'id': 'tech',
+        'name_zh': '科技蓝', 'name_en': 'Tech Blue',
+        'desc_zh': '默认主题。靛蓝 + 青色辉光，深色下带一层网格底纹。',
+        'desc_en': 'Default. Indigo + cyan glow over a subtle grid backdrop.',
+        'light': {
+            'bg': '#eef1f7', 'glow': '99,102,241', 'glow2': '34,211,238',
+            'panel': '#ffffff', 'panel2': '#f1f4f9', 'panel3': '#e9eef6',
+            'line': 'rgba(60,80,120,.16)',
+            'txt': '#1f2a3d', 'txt2': '#5a6b85', 'txt3': '#94a3b8',
+            'cyan': '#0891b2', 'indigo': '#4f46e5', 'green': '#0f9d58',
+            'amber': '#b7791f', 'red': '#dc3b35',
+            'input_bg': '#ffffff', 'input_txt': '#1f2a3d',
+            'log_bg': '#0f1726', 'log_txt': '#c8d6ea', 'arrow': '#5a6b85',
+            '--line-strong': 'rgba(34,150,200,.45)',
+            '--focus-shadow': 'rgba(34,150,200,.14)',
+            '--grid-line': 'rgba(60,80,120,.05)',
+            '--chip-bg': 'rgba(34,150,200,.10)',
+            '--chip-border': 'rgba(34,150,200,.22)',
+            '--sidebar-bg': 'linear-gradient(180deg,#ffffff,#f4f6fb)',
+            '--scroll-thumb': 'rgba(100,130,175,.32)',
+        },
+        'dark': {
+            'bg': '#070b14', 'glow': '99,102,241', 'glow2': '34,211,238',
+            'panel': 'rgba(16,24,40,.72)', 'panel2': 'rgba(20,30,50,.55)',
+            'panel3': 'rgba(8,13,24,.5)',
+            'line': 'rgba(94,146,200,.14)',
+            'txt': '#dce6f5', 'txt2': '#8fa3bd', 'txt3': '#5d718c',
+            'cyan': '#22d3ee', 'indigo': '#6366f1', 'green': '#34d399',
+            'amber': '#fbbf24', 'red': '#f87171',
+            'input_bg': 'rgba(8,13,24,.6)', 'input_txt': '#dce6f5',
+            'log_bg': '#05080f', 'log_txt': '#b6c6dc', 'arrow': '#8fa3bd',
+            '--line-strong': 'rgba(34,211,238,.34)',
+            '--container-bg': 'linear-gradient(180deg,rgba(14,21,36,.86),rgba(8,13,24,.92))',
+            '--sidebar-bg': 'linear-gradient(180deg,rgba(12,18,32,.96),rgba(6,10,20,.92))',
+            '--scroll-thumb': 'rgba(120,160,210,.28)',
+        },
+    },
+    {
+        'id': 'midnight',
+        'name_zh': '极夜紫', 'name_en': 'Midnight Violet',
+        'desc_zh': '深紫罗兰 + 品红辉光，深色下更沉，适合长时间盯屏。',
+        'desc_en': 'Deep violet + magenta glow; calmer for long sessions.',
+        'light': {
+            'bg': '#f2f0f8', 'glow': '124,58,237', 'glow2': '217,70,239',
+            'panel': '#ffffff', 'panel2': '#f5f3fb', 'panel3': '#ece9f7',
+            'line': 'rgba(80,60,140,.16)',
+            'txt': '#241f38', 'txt2': '#5f5578', 'txt3': '#9a90b0',
+            'cyan': '#7c3aed', 'indigo': '#a855f7', 'green': '#16a34a',
+            'amber': '#b45309', 'red': '#dc2626',
+            'input_bg': '#ffffff', 'input_txt': '#241f38',
+            'log_bg': '#14101f', 'log_txt': '#cec4e8', 'arrow': '#5f5578',
+            '--grid-line': 'rgba(80,60,140,.05)',
+            '--scroll-thumb': 'rgba(120,95,175,.30)',
+        },
+        'dark': {
+            'bg': '#0a0713', 'glow': '139,92,246', 'glow2': '217,70,239',
+            'panel': 'rgba(24,17,40,.74)', 'panel2': 'rgba(32,22,55,.58)',
+            'panel3': 'rgba(12,8,22,.5)',
+            'line': 'rgba(150,120,220,.15)',
+            'txt': '#e6dff5', 'txt2': '#a295c4', 'txt3': '#6f6390',
+            'cyan': '#a78bfa', 'indigo': '#c084fc', 'green': '#4ade80',
+            'amber': '#fbbf24', 'red': '#fb7185',
+            'input_bg': 'rgba(10,6,20,.62)', 'input_txt': '#e6dff5',
+            'log_bg': '#050310', 'log_txt': '#bdb0dc', 'arrow': '#a295c4',
+            '--grid-line': 'rgba(150,120,220,.06)',
+        },
+    },
+    {
+        'id': 'aurora',
+        'name_zh': '极光绿', 'name_en': 'Aurora Green',
+        'desc_zh': '翡翠绿 + 青绿辉光，运行状态一眼分明的冷绿调。',
+        'desc_en': 'Emerald + teal glow; a cool green tone that reads clearly.',
+        'light': {
+            'bg': '#eef7f4', 'glow': '16,185,129', 'glow2': '34,211,238',
+            'panel': '#ffffff', 'panel2': '#f0f8f5', 'panel3': '#e4f2ec',
+            'line': 'rgba(40,110,90,.16)',
+            'txt': '#16281f', 'txt2': '#4d6b5e', 'txt3': '#8aa79c',
+            'cyan': '#059669', 'indigo': '#0d9488', 'green': '#16a34a',
+            'amber': '#b45309', 'red': '#dc2626',
+            'input_bg': '#ffffff', 'input_txt': '#16281f',
+            'log_bg': '#0c1a16', 'log_txt': '#bfe3d3', 'arrow': '#4d6b5e',
+            '--grid-line': 'rgba(40,110,90,.05)',
+            '--scroll-thumb': 'rgba(70,140,120,.30)',
+        },
+        'dark': {
+            'bg': '#04100c', 'glow': '52,211,153', 'glow2': '45,212,191',
+            'panel': 'rgba(12,30,25,.74)', 'panel2': 'rgba(16,40,33,.58)',
+            'panel3': 'rgba(6,18,15,.52)',
+            'line': 'rgba(94,200,170,.15)',
+            'txt': '#dcf5ea', 'txt2': '#8fc4b2', 'txt3': '#5a8c7c',
+            'cyan': '#34d399', 'indigo': '#2dd4bf', 'green': '#6ee7b7',
+            'amber': '#fcd34d', 'red': '#fb7185',
+            'input_bg': 'rgba(4,16,13,.62)', 'input_txt': '#dcf5ea',
+            'log_bg': '#03100c', 'log_txt': '#a8d9c6', 'arrow': '#8fc4b2',
+            '--grid-line': 'rgba(94,200,170,.06)',
+        },
+    },
+    {
+        'id': 'frost',
+        'name_zh': '霜白玻璃', 'name_en': 'Frost Glass',
+        'desc_zh': '低饱和石板灰 + 毛玻璃卡片，最不抢眼的克制配色。',
+        'desc_en': 'Low-saturation slate + frosted cards; the most restrained option.',
+        'light': {
+            'bg': '#f7f9fc', 'glow': '148,163,184', 'glow2': '203,213,225',
+            'panel': 'rgba(255,255,255,.86)', 'panel2': '#f1f5f9', 'panel3': '#e8edf4',
+            'line': 'rgba(51,65,85,.14)',
+            'txt': '#0f172a', 'txt2': '#475569', 'txt3': '#94a3b8',
+            'cyan': '#0284c7', 'indigo': '#3b82f6', 'green': '#16a34a',
+            'amber': '#b45309', 'red': '#dc2626',
+            'input_bg': '#ffffff', 'input_txt': '#0f172a',
+            'log_bg': '#0f172a', 'log_txt': '#cbd5e1', 'arrow': '#475569',
+            '--line-strong': 'rgba(59,130,246,.42)',
+            '--grid-line': 'rgba(51,65,85,.05)',
+            '--scroll-thumb': 'rgba(90,115,145,.30)',
+        },
+        'dark': {
+            'bg': '#0b1120', 'glow': '125,155,200', 'glow2': '148,180,220',
+            'panel': 'rgba(20,28,45,.78)', 'panel2': 'rgba(28,38,58,.60)',
+            'panel3': 'rgba(10,16,28,.52)',
+            'line': 'rgba(148,175,210,.16)',
+            'txt': '#e2e8f0', 'txt2': '#94a3b8', 'txt3': '#64748b',
+            'cyan': '#38bdf8', 'indigo': '#60a5fa', 'green': '#4ade80',
+            'amber': '#fbbf24', 'red': '#fb7185',
+            'input_bg': 'rgba(10,16,28,.62)', 'input_txt': '#e2e8f0',
+            'log_bg': '#060a14', 'log_txt': '#b6c4d8', 'arrow': '#94a3b8',
+            '--grid-line': 'rgba(148,175,210,.05)',
+        },
+    },
+    {
+        'id': 'contrast',
+        'name_zh': '高对比', 'name_en': 'High Contrast',
+        'desc_zh': '纯黑纯白 + 加粗描边，为弱视或强光环境准备的无障碍模板。',
+        'desc_en': 'Pure black/white with heavier outlines — built for low vision or bright rooms.',
+        'light': {
+            'bg': '#ffffff', 'glow': '29,78,216', 'glow2': '29,78,216',
+            'panel': '#ffffff', 'panel2': '#f8fafc', 'panel3': '#eef2f7',
+            'line': 'rgba(0,0,0,.42)',
+            'txt': '#000000', 'txt2': '#1f2937', 'txt3': '#4b5563',
+            'cyan': '#1d4ed8', 'indigo': '#1e40af', 'green': '#15803d',
+            'amber': '#a16207', 'red': '#b91c1c',
+            'input_bg': '#ffffff', 'input_txt': '#000000',
+            'log_bg': '#000000', 'log_txt': '#e5e7eb', 'arrow': '#000000',
+            '--line-strong': 'rgba(0,0,0,.65)',
+            '--grid-line': 'rgba(0,0,0,.06)',
+            '--chip-bg': 'rgba(29,78,216,.12)', '--chip-border': 'rgba(0,0,0,.5)',
+            '--card-shadow': '0 3px 10px rgba(0,0,0,.18)',
+            '--container-shadow': '0 8px 24px rgba(0,0,0,.22)',
+            '--scroll-thumb': 'rgba(0,0,0,.45)',
+        },
+        'dark': {
+            'bg': '#000000', 'glow': '96,165,250', 'glow2': '96,165,250',
+            'panel': '#0a0a0a', 'panel2': '#171717', 'panel3': '#202020',
+            'line': 'rgba(255,255,255,.38)',
+            'txt': '#ffffff', 'txt2': '#e5e5e5', 'txt3': '#a3a3a3',
+            'cyan': '#60a5fa', 'indigo': '#93c5fd', 'green': '#4ade80',
+            'amber': '#fcd34d', 'red': '#fca5a5',
+            'input_bg': '#0a0a0a', 'input_txt': '#ffffff',
+            'log_bg': '#000000', 'log_txt': '#ffffff', 'arrow': '#ffffff',
+            '--line-strong': 'rgba(255,255,255,.60)',
+            '--grid-line': 'rgba(255,255,255,.07)',
+            '--chip-bg': 'rgba(96,165,250,.16)', '--chip-border': 'rgba(255,255,255,.45)',
+            '--card-shadow': '0 3px 12px rgba(0,0,0,.8)',
+            '--container-shadow': '0 8px 28px rgba(0,0,0,.85)',
+            '--scroll-thumb': 'rgba(255,255,255,.40)',
+        },
+    },
+)
+
+UI_THEME_MAP = {t['id']: t for t in UI_THEMES}
+
+
+def theme_css(theme_id=None, mode=None):
+    """生成某套模板的 CSS 规则（含 light / dark 两版），供页面首屏内联注入。
+
+    两版一起注入，切换明暗时不必再请求后端 —— 否则会闪一下。
+    """
+    tid = theme_id if theme_id in UI_THEME_MAP else DEFAULT_UI_THEME
+    t = UI_THEME_MAP[tid]
+    out = []
+    for m in ('light', 'dark'):
+        v = _derive_vars(t[m], m)
+        sel = 'body[data-theme="{tid}"]'.format(tid=tid)
+        if m == 'dark':
+            sel += '[data-mode="dark"]'
+        body = ';'.join('{k}:{val}'.format(k=k, val=v[k]) for k in _UI_VAR_NAMES)
+        out.append(sel + '{' + body + '}')
+    return '\n'.join(out)
+
+
+def ui_theme_current():
+    """当前生效的 (theme, mode)，取不到设置时回退默认值。"""
+    theme, mode = DEFAULT_UI_THEME, 'light'
+    try:
+        m = app.config.get('FRP_MANAGER')
+        if m is not None:
+            s = m.load_app_settings()
+            theme = s.get('ui_theme') or DEFAULT_UI_THEME
+            mode = s.get('ui_mode') or 'light'
+    except Exception:
+        pass
+    if theme not in UI_THEME_MAP:
+        theme = DEFAULT_UI_THEME
+    if mode not in ('light', 'dark'):
+        mode = 'light'
+    return theme, mode
 
 
 def load_web_port(default=5000):
@@ -162,7 +483,7 @@ def check_client_server_addr(config_file):
     if addr == '0.0.0.0':
         return False, ("server_addr 不能填 0.0.0.0——那是「监听所有网卡」的意思，"
                        "不能当连接目标。请改成 FRP 服务端实际可达的 IP 或域名"
-                       "（例如 114.132.239.35）；若 frps 就跑在本机则填 127.0.0.1。")
+                       "（公网版填服务端公网 IP）；若 frps 就跑在本机则填 127.0.0.1。")
     return True, ''
 
 
@@ -519,6 +840,14 @@ def start_link_monitor(interval=30):
 # CSS 与 JS 已内联在里面 —— 换界面只需要替换那一个 html 文件，不用碰 Python。
 # ---------------------------------------------------------------------------
 
+# 页面模板缓存：path -> (mtime, size, text)
+# index.html 已有 380KB，而每次打开首页都要 open+read+Jinja 渲染一遍。
+# 文件不改动时直接复用，省掉整段 IO；改动（mtime/size 变了）立即失效，
+# 所以开发时改完 html 刷新即可生效，不需要重启。
+_PAGE_CACHE = {}
+_PAGE_CACHE_LOCK = threading.Lock()
+
+
 def load_page_html(name):
     """读取 web/<name>。依次在 源码目录 / PyInstaller 临时目录 下查找。
 
@@ -531,13 +860,73 @@ def load_page_html(name):
     for root in roots:
         for sub in ('web', 'static', ''):
             path = os.path.join(root, sub, name) if sub else os.path.join(root, name)
-            if os.path.isfile(path):
-                try:
-                    with io.open(path, 'r', encoding='utf-8') as f:
-                        return f.read()
-                except OSError:
-                    continue
+            if not os.path.isfile(path):
+                continue
+            try:
+                st = os.stat(path)
+                sig = (st.st_mtime, st.st_size)
+            except OSError:
+                sig = None
+            if sig is not None:
+                with _PAGE_CACHE_LOCK:
+                    hit = _PAGE_CACHE.get(path)
+                if hit and hit[0] == sig:
+                    return hit[1]
+            try:
+                with io.open(path, 'r', encoding='utf-8') as f:
+                    text = f.read()
+            except OSError:
+                continue
+            if sig is not None:
+                with _PAGE_CACHE_LOCK:
+                    _PAGE_CACHE[path] = (sig, text)
+            return text
     return None
+
+
+# ---------------------------------------------------------------- 响应压缩
+# index.html 380KB -> gzip 后约 60KB，是局域网/公网访问体感最明显的单项优化。
+_GZIP_MIN_BYTES = 1024
+_GZIP_TYPES = ('text/html', 'text/css', 'text/plain', 'application/json',
+               'application/javascript', 'application/manifest+json', 'image/svg+xml')
+
+
+@app.after_request
+def _maybe_gzip(resp):
+    """对体积较大的文本响应做 gzip。
+
+    判断顺序按「最省事」排列：先看状态码与类型，再解压判断，避免对
+    图片 / 已压缩内容做无谓的解压再压缩（那只会白白烧 CPU）。
+    """
+    try:
+        if resp.direct_passthrough:
+            return resp
+        if resp.status_code < 200 or resp.status_code in (204, 304):
+            return resp
+        if resp.headers.get('Content-Encoding'):
+            return resp
+        ctype = (resp.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+        if not any(ctype == t or ctype.startswith(t) for t in _GZIP_TYPES):
+            return resp
+        if 'gzip' not in (request.headers.get('Accept-Encoding') or '').lower():
+            return resp
+        raw = resp.get_data()
+        if len(raw) < _GZIP_MIN_BYTES:
+            return resp
+        buf = io.BytesIO()
+        with _gzip.GzipFile(fileobj=buf, mode='wb', compresslevel=6) as f:
+            f.write(raw)
+        packed = buf.getvalue()
+        if len(packed) >= len(raw):
+            return resp      # 压了反而更大（比如随机内容），不如不压
+        resp.set_data(packed)
+        resp.headers['Content-Encoding'] = 'gzip'
+        resp.headers['Vary'] = 'Accept-Encoding'
+        resp.headers['Content-Length'] = str(len(packed))
+    except Exception:
+        # 压缩失败绝不能影响正常响应：这里出任何错都原样返回
+        pass
+    return resp
 
 
 def render_page(name, **ctx):
@@ -563,10 +952,14 @@ def index():
     import platform
     bits = platform.architecture()[0]
     system_info = f"{platform.system()} {platform.machine()} ({bits})"
+    _th, _md = ui_theme_current()
     return render_page('index.html', system_info=system_info,
                        arch_info=manager.release_platform,
                        auth_enabled=_auth_enabled(),
-                       app_version=app_version())
+                       app_version=app_version(),
+                       # 首屏就把当前主题的变量内联进去，避免「先白屏再换肤」的闪烁
+                       ui_theme=_th, ui_mode=_md,
+                       ui_theme_css=theme_css(_th, _md))
 
 
 @app.route('/api/info')
@@ -596,6 +989,66 @@ def api_info():
         'data_dir': DATA_DIR,
         'app_version': app_version(),
     })
+
+
+@app.route('/api/ui/themes')
+def ui_themes_api():
+    """界面主题模板库。返回全部模板的变量（light + dark 两版），
+    前端拿到后可本地即时切换，不必刷新页面。"""
+    cur_theme, cur_mode = ui_theme_current()
+    items = []
+    for t in UI_THEMES:
+        try:
+            lite = _derive_vars(t['light'], 'light')
+            darkv = _derive_vars(t['dark'], 'dark')
+        except Exception as e:
+            # 单套模板配错不能拖垮整个列表 —— 跳过它，其余照常可用
+            print('[WARN] 主题 %s 派生失败: %s' % (t.get('id'), e))
+            continue
+        items.append({
+            'id': t['id'],
+            'name_zh': t['name_zh'], 'name_en': t['name_en'],
+            'desc_zh': t['desc_zh'], 'desc_en': t['desc_en'],
+            # 前端卡片用它画预览色块，不必再维护一份色卡
+            'preview': {'bg': lite['--bg'], 'panel': lite['--panel'],
+                        'accent': lite['--cyan'], 'txt': lite['--txt']},
+            'vars': {'light': lite, 'dark': darkv},
+        })
+    return jsonify({'success': True, 'theme': cur_theme, 'mode': cur_mode, 'themes': items})
+
+
+@app.route('/api/ui/theme', methods=['POST'])
+def ui_theme_set():
+    """切换界面主题 / 明暗。写进 app_settings.ini 的 [ui] 段，重启后仍生效。"""
+    d = request.get_json(silent=True) or request.form or {}
+    m = app.config['FRP_MANAGER']
+    theme = str(d.get('theme') or '').strip().lower()
+    mode = str(d.get('mode') or '').strip().lower()
+    cur_theme, cur_mode = ui_theme_current()
+
+    changed = []
+    if theme:
+        if theme not in UI_THEME_MAP:
+            return jsonify({'success': False, 'message': _m(
+                '未知的主题模板', 'Unknown theme')}), 400
+        cur_theme = theme
+        changed.append('theme')
+    if mode:
+        if mode not in ('light', 'dark'):
+            return jsonify({'success': False, 'message': _m(
+                '未知的显示模式', 'Unknown display mode')}), 400
+        cur_mode = mode
+        changed.append('mode')
+    if not changed:
+        return jsonify({'success': False, 'message': _m(
+            '没有需要保存的改动', 'Nothing to save')}), 400
+
+    ok = m.save_app_settings({'ui_theme': cur_theme, 'ui_mode': cur_mode})
+    if not ok:
+        return jsonify({'success': False, 'message': _m(
+            '保存失败', 'Failed to save')}), 500
+    return jsonify({'success': True, 'theme': cur_theme, 'mode': cur_mode,
+                    'message': _m('主题已更新', 'Theme updated')})
 
 
 @app.route('/api/bin/versions')
@@ -642,14 +1095,47 @@ def frp_latest():
                     'current_s': m.binary_version('server')})
 
 
+# ---------------------------------------------------------------- 配置解析缓存
+# /api/status 是前端轮询最频繁的接口（首页 5 秒一次），每次都要把 frpc / frps
+# 的配置读出来解析端口映射。配置文件并不常改，按 mtime+size 缓存即可。
+_CFG_PARSE_CACHE = {}
+_CFG_PARSE_LOCK = threading.Lock()
+
+
+def _cached_cfg_parse(path, fn, tag):
+    """按 (文件 mtime, 大小) 缓存解析结果；文件一改立即失效。
+
+    tag 用于区分同一文件上的不同解析函数（ports / port_map 是两套逻辑）。
+    """
+    try:
+        st = os.stat(path)
+        sig = (st.st_mtime, st.st_size)
+    except OSError:
+        sig = None
+    key = (path, tag)
+    if sig is not None:
+        with _CFG_PARSE_LOCK:
+            hit = _CFG_PARSE_CACHE.get(key)
+        if hit and hit[0] == sig:
+            return hit[1]
+    val = fn()
+    if sig is not None:
+        with _CFG_PARSE_LOCK:
+            # 缓存只增不删，但条目数有上界（2 个 mode × 2 种解析 = 4 条）
+            _CFG_PARSE_CACHE[key] = (sig, val)
+    return val
+
+
 @app.route('/api/status')
 def status():
     manager = app.config['FRP_MANAGER']
     s = manager.get_frp_status()
     for mode in ('client', 'server'):
         cfg = resolve_config_file(mode)
-        s[mode]['ports'] = extract_frp_ports(mode, cfg)
-        s[mode]['port_map'] = extract_port_mappings(mode, cfg)
+        s[mode]['ports'] = _cached_cfg_parse(
+            cfg, lambda: extract_frp_ports(mode, cfg), 'ports:' + mode)
+        s[mode]['port_map'] = _cached_cfg_parse(
+            cfg, lambda: extract_port_mappings(mode, cfg), 'portmap:' + mode)
     # 进程自愈守护状态（前端角标 / 状态页展示）
     try:
         s['watchdog'] = manager.get_watchdog_status()

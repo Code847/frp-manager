@@ -27,6 +27,7 @@ import ipaddress
 import os
 import random
 import secrets
+import socket
 import struct
 import sys
 import time
@@ -59,6 +60,8 @@ _OPEN_PREFIX = (
     '/login', '/static/', '/api/login', '/api/captcha', '/favicon.ico',
     # 界面语言偏好：登录页也要能读写，否则登录页无法跟随/切换语言
     '/api/i18n',
+    # IP 白名单拦截后的说明页：必须同时免登录、免白名单，否则会跳回登录页形成死循环
+    '/blocked',
 )
 
 
@@ -151,7 +154,15 @@ def load_auth_config(cfg=None):
         print('[WARN] 读取 %s 失败: %s' % (path, e))
         return out
 
-    sec = 'auth' if cp.has_section('auth') else (cp.sections()[0] if cp.sections() else None)
+    # 登录加固的键与账号密码同在 [auth] 段。早期文档曾写成 [security]，
+    # 若这里不认，照旧文档手改配置的人会「改了半天没生效」却查不出原因。
+    sec = None
+    for _name in ('auth', 'security'):
+        if cp.has_section(_name):
+            sec = _name
+            break
+    if not sec:
+        sec = cp.sections()[0] if cp.sections() else None
     if not sec:
         return out
 
@@ -355,6 +366,93 @@ def _client_ip():
     return request.remote_addr or '0.0.0.0'
 
 
+def _is_private_ip(ip):
+    """判断是否私有/回环地址（界面上决定要不要给「填网段」按钮）。"""
+    if not ip:
+        return False
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return False
+    return bool(addr.is_private or addr.is_loopback or addr.is_link_local)
+
+
+def _cidr24(ip):
+    """把 IP 收成 /24 网段，便于「整个局域网都能登录」。"""
+    try:
+        return str(ipaddress.ip_network('%s/24' % ip, strict=False))
+    except ValueError:
+        return ip
+
+
+def local_ips():
+    """列出本机可用于登录面板的 IPv4 地址（排除回环），已去重并按「主网卡优先」排序。
+
+    开启 IP 白名单后，用户最容易卡在「不知道该填哪个地址」上 —— 这个列表
+    直接喂给界面，就能一键填入，而不是让用户猜。
+
+    顺序约定：能出公网的出口 IP 排最后（它是本机地址，但通常不是别人访问
+    本机的地址），私有网段（192.168/10/172.16-31）与主机名解析出的 IP 在前。
+    """
+    out, seen = [], set()
+
+    def _add(ip, kind):
+        if not ip or ip in seen:
+            return
+        seen.add(ip)
+        out.append({'ip': ip, 'kind': kind})
+
+    # 1) 出口 IP：靠路由表拿，不真正发包；多网卡 / VPN 下最贴近「别人访问你」的地址
+    for probe in (('8.8.8.8', 80), ('223.5.5.5', 80), ('10.255.255.255', 1)):
+        s = None
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.settimeout(0.4)
+            s.connect(probe)
+            ip = s.getsockname()[0]
+            if ip and not ip.startswith('127.'):
+                _add(ip, 'outbound')
+                break
+        except Exception:
+            continue
+        finally:
+            if s is not None:
+                try:
+                    s.close()
+                except Exception:
+                    pass
+
+    # 2) 主机名解析出的所有地址：覆盖多网卡、Docker 网桥等「有地址但无默认路由」的情况
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            _add(info[4][0], 'host')
+    except Exception:
+        pass
+
+    # 排序：私有网段在前，出口 IP（ NAT 后的本机地址，别人一般访问不到）在后
+    def _rank(item):
+        return (0 if _is_private_ip(item['ip']) else 1, item['ip'])
+
+    out.sort(key=_rank)
+    return out
+
+
+_LAN_IP_CACHE = {'at': 0.0, 'value': []}
+
+
+def local_ips_cached(ttl=10):
+    """带短缓存的版本：网卡地址不会秒变，避免每次请求都做一次探测。"""
+    now = time.time()
+    if now - _LAN_IP_CACHE['at'] < ttl and _LAN_IP_CACHE['value']:
+        return _LAN_IP_CACHE['value']
+    val = local_ips()
+    # 探测彻底失败时（无网卡 / 沙箱）也要给一点兜底，界面才有东西可显示
+    if not val:
+        val = [{'ip': '127.0.0.1', 'kind': 'loopback'}]
+    _LAN_IP_CACHE.update({'at': now, 'value': val})
+    return val
+
+
 def _ip_allowed(client_ip, allowlist):
     """allowlist 为空=不限制；否则需命中某个 IP 或 CIDR。"""
     if not allowlist:
@@ -393,6 +491,31 @@ def _fail_count(ip, window_min):
 
 def _register_fail(ip):
     _FAIL.setdefault(ip, []).append(time.time())
+
+
+# ----------------------------------------------------------------------- #
+# TOTP 验证码单独限流
+# ----------------------------------------------------------------------- #
+# 6 位动态码只有 10^6 种，不限流的话「二次验证」的厚度几乎等于没有。
+_TOTP_FAIL = {}
+_TOTP_MAX_FAILS = 8
+_TOTP_WINDOW = 15 * 60          # 15 分钟内的错误次数才计入
+
+
+def _totp_fail_count(ip):
+    cutoff = time.time() - _TOTP_WINDOW
+    lst = _TOTP_FAIL.get(ip) or []
+    lst = [t for t in lst if t >= cutoff]
+    _TOTP_FAIL[ip] = lst
+    return len(lst)
+
+
+def _totp_fail(ip):
+    _TOTP_FAIL.setdefault(ip, []).append(time.time())
+
+
+def _totp_reset(ip):
+    _TOTP_FAIL.pop(ip, None)
 
 
 def _is_locked(ip):
@@ -655,6 +778,8 @@ def api_login():
         session.permanent = False
         session['auth_exp'] = 0
 
+    # 登录成功即清掉该 IP 的验证码错误计数，否则一次手滑会影响后续登录
+    _totp_reset(_client_ip())
     nxt = str(d.get('next') or '/')
     if not nxt.startswith('/') or nxt.startswith('//'):
         nxt = '/'
@@ -717,6 +842,11 @@ def _api_security_get():
         'totp_enabled': a['totp_enabled'],
         'totp_has_secret': bool(a['totp_secret']),
         'file': a['file'],
+        # 白名单开启后，最常卡住用户的是「不知道该填哪个 IP」。
+        # 把当前来源 IP 与本机候选地址一并返回，界面就能一键填入。
+        'client_ip': _client_ip(),
+        'client_allowed': _ip_allowed(_client_ip(), a['ip_allowlist']),
+        'lan_ips': [x['ip'] for x in local_ips_cached()],
     }
     return jsonify(out)
 
@@ -748,14 +878,43 @@ def _api_totp_setup():
 
 
 def _api_totp_enable():
+    """启用 TOTP。支持两种用法：
+
+    1) 带 secret（新密钥）+ code —— 生成并启用，必须用新密钥的码确认；
+    2) 不带 secret 或 secret 等于已保存的密钥 —— 「重新启用」，
+       用已保存密钥的当前验证码即可，不必重新扫码。
+
+    第 2 种是「停用后立刻重开」的通道：密钥一直留着，用户只输一次 6 位码。
+    """
     d = request.get_json(silent=True) or request.form or {}
     secret = str(d.get('secret') or '').strip()
     code = str(d.get('code') or '').strip()
-    if not secret or not code:
-        return jsonify({'success': False, 'message': _m('缺少密钥或验证码', 'Missing secret or code')}), 400
-    if not totp_verify(secret, code):
-        return jsonify({'success': False, 'message': _m('验证码不正确，请确认时间同步后重试', 'Invalid code; check time sync')}), 400
-    new, msg = save_auth_config({'totp_secret': secret, 'totp_enabled': True}, _CONFIG)
+    if not code:
+        return jsonify({'success': False, 'message': _m('缺少验证码', 'Missing verification code')}), 400
+
+    cur = load_auth_config(_CONFIG)
+    # 6 位码空间有限，错误重试必须限流，否则等于把二次验证的厚度降到 10^6
+    ip = _client_ip()
+    if _totp_fail_count(ip) >= _TOTP_MAX_FAILS:
+        return jsonify({'success': False, 'message': _m(
+            '连续输入错误次数过多，请稍后再试', 'Too many wrong codes; try again later')}), 429
+    if secret and secret != cur.get('totp_secret'):
+        if not totp_verify(secret, code):          # 新密钥必须用新码确认
+            _totp_fail(ip)
+            return jsonify({'success': False, 'message': _m(
+                '验证码不正确，请确认时间同步后重试', 'Invalid code; check time sync')}), 400
+    else:
+        secret = (cur.get('totp_secret') or '').strip()
+        if not secret:
+            return jsonify({'success': False, 'message': _m(
+                '还没有密钥，请先点「生成并启用」', 'No secret yet; generate and enable first')}), 400
+        if not totp_verify(secret, code):
+            _totp_fail(ip)
+            return jsonify({'success': False, 'message': _m(
+                '验证码不正确，请确认时间同步后重试', 'Invalid code; check time sync')}), 400
+
+    save_auth_config({'totp_secret': secret, 'totp_enabled': True}, _CONFIG)
+    _totp_reset(ip)
     return jsonify({'success': True, 'message': _m('TOTP 二次验证已启用', 'TOTP 2FA enabled')})
 
 
@@ -765,8 +924,85 @@ def _api_totp_disable():
     return jsonify({'success': True, 'message': _m('TOTP 二次验证已关闭', 'TOTP 2FA disabled')})
 
 
+# ---------------------------------------------------------------- 被拦截页
+# 白名单开启后误配（把自己关在门外）是几乎必发生的事，此时必须告诉用户
+# 「怎么办」，而不是甩一个没有下文的 403。
+_BLOCKED_PAGE = u"""<!doctype html>
+<html lang="%(lang)s"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>%(t1)s</title>
+<style>
+body{font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+background:#f6f8fb;color:#1f2733;margin:0;padding:40px 16px;line-height:1.7}
+main{max-width:680px;margin:0 auto;background:#fff;border:1px solid #e3e8ef;
+border-radius:14px;padding:28px 30px}
+h1{font-size:1.2rem;margin:0 0 10px}
+code{background:#f1f4f9;padding:2px 7px;border-radius:6px;font-size:.95em;color:#0a6cff}
+.warn{border-left:4px solid #f5a623;background:#fff8ec;padding:12px 18px;
+border-radius:8px;margin:18px 0}
+.warn ol{padding-left:20px;margin:8px 0 0}
+footer{margin-top:22px;font-size:.85em;color:#707a87}
+</style></head><body><main>
+<h1>%(t1)s</h1>
+<p>%(t2)s <code>%(ip)s</code> %(t3)s</p>
+<div class="warn">
+<p style="margin:0">%(t4)s</p>
+<ol>
+<li>%(t5)s <code id="localUrl">http://127.0.0.1:PORT</code></li>
+<li>%(t6)s</li>
+</ol>
+</div>
+<footer>%(t7)s</footer>
+</main>
+<script>
+// 面板端口可能被保留端口规则顺延过（如 5000 → 5002），
+// 所以「本机地址」要按用户当前实际访问的地址重写，不能写死一个端口。
+(function(){
+  var el = document.getElementById('localUrl');
+  if (!el) return;
+  try {
+    var u = new URL(window.location.href);
+    u.protocol = 'http:'; u.hostname = '127.0.0.1';
+    el.textContent = u.toString();
+  } catch (e) {}
+})();
+</script>
+</body></html>"""
+
+_BLOCKED_TEXT = {
+    'zh': {
+        't1': u'当前 IP 不在允许名单内',
+        't2': u'你正在使用的地址',
+        't3': u'不在「登录 IP 白名单」里，因此面板与接口都已拒绝访问。',
+        't4': u'要恢复访问，任选一种方式：',
+        't5': u'用本机地址重新打开面板（同一台电脑上的浏览器）：',
+        't6': u'登录后在「安全中心 → 登录加固」里把自己这个地址（建议填整个网段，如 192.168.1.0/24）加进白名单，再点保存。',
+        't7': u'也可以直接编辑配置文件 configs/web_auth.ini 中的 ip_allowlist 项。',
+    },
+    'en': {
+        't1': u'Your IP is not on the allowlist',
+        't2': u'The address you are using is',
+        't3': u'which is not in the "Login IP allowlist", so the panel and API have been blocked.',
+        't4': u'To restore access, pick either of these:',
+        't5': u'Reopen the panel from this same computer via localhost:',
+        't6': u'Then go to Security Center → Login hardening, add your address (a whole subnet such as 192.168.1.0/24 is recommended) and save.',
+        't7': u'You can also edit ip_allowlist in configs/web_auth.ini directly.',
+    },
+}
+
+
+def _page_blocked():
+    lang = _msg_lang()
+    t = _BLOCKED_TEXT.get(lang) or _BLOCKED_TEXT['zh']
+    if lang == 'en':
+        t = _BLOCKED_TEXT['en']
+    html = _BLOCKED_PAGE % dict(t, lang=lang, ip=_client_ip())
+    return Response(html, mimetype='text/html; charset=utf-8')
+
+
 # 注册新端点（在 init_auth 内统一挂到 blueprint 上）
 SECURITY_ROUTES = [
+    ('/blocked', ['GET'], {'GET': _page_blocked}),
     ('/api/auth/security', ['GET', 'POST'], {'GET': _api_security_get, 'POST': _api_security_post}),
     ('/api/auth/totp/setup', ['GET'], {'GET': _api_totp_setup}),
     ('/api/auth/totp/enable', ['POST'], {'POST': _api_totp_enable}),
@@ -926,7 +1162,9 @@ def init_auth(app, config):
                 return jsonify({'success': False,
                                'message': _m('当前 IP 不在允许名单内', 'Your IP is not in the allowlist'),
                                'need_login': True}), 403
-            return redirect('/login?err=1'), 403
+            # 以前这里写的是「403 + redirect」——两个语义互相打架的响应，
+            # 浏览器拿到 403 不会跳转，用户只看到一片空白。改为给一个说明页。
+            return redirect('/blocked', code=302)
         return _guard()
 
     app.before_request(_guard_hardened)

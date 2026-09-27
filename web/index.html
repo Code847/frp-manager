@@ -41,7 +41,9 @@
             --radius:14px; --sidebar-w:248px;
         }
 
-        body[data-theme="dark"]{
+        /* 明暗：现在 data-theme 承载「模板 id」，明暗改由 data-mode 表达。
+           这一块是**默认模板（tech）**的暗色兜底 —— 后端未注入主题 CSS 时也能正常显示。 */
+        body[data-mode="dark"]{
             --bg:#070b14;
             --body-grad:
                 radial-gradient(1200px 700px at 82% -10%,rgba(99,102,241,.18),transparent 60%),
@@ -510,9 +512,53 @@
         .logbox{min-height:340px; height:calc(100vh - 300px); max-height:none; overflow:auto;
             font-size:12px; line-height:1.65; white-space:pre-wrap; word-break:break-all}
 
+        /* ===== 界面主题模板库（v1.17.0）=====
+           卡片只做「选一套变量」，不碰布局，所以切模板不会引起任何结构回归。 */
+        .theme-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(212px,1fr)); gap:12px}
+        .tplcard{display:flex; align-items:center; gap:10px; padding:12px; text-align:left;
+            font-family:inherit; font-size:inherit; width:100%;
+            background:var(--panel2); border:1px solid var(--line); border-radius:12px;
+            color:var(--txt); cursor:pointer;
+            transition:border-color .18s ease, box-shadow .18s ease, transform .18s ease}
+        .tplcard:hover{border-color:var(--line-strong); box-shadow:var(--card-shadow); transform:translateY(-2px)}
+        .tplcard:focus-visible{outline:2px solid var(--cyan); outline-offset:2px}
+        .tplcard-on{border-color:var(--cyan); box-shadow:0 0 0 1px var(--cyan) inset}
+        .tplcard-sw{display:flex; flex:0 0 auto; border-radius:8px; overflow:hidden;
+            border:1px solid var(--line)}
+        .tplcard-sw i{display:block; width:13px; height:32px}
+        .tplcard-meta{display:flex; flex-direction:column; gap:3px; min-width:0; flex:1 1 auto}
+        .tplcard-meta strong{font-size:13px; font-weight:600; color:var(--txt)}
+        .tplcard-meta em{font-style:normal; font-size:11px; color:var(--txt2); line-height:1.45}
+        .tplcard-ck{flex:0 0 auto; width:14px; color:var(--cyan); font-weight:700; font-size:14px}
+
+        /* ===== 科技感增强（v1.17.0）=====
+           这一组全是**装饰层**：描边、辉光、渐变，不改动任何盒模型的宽高与定位。
+           这样即便某套模板把某个变量设成透明，也只是"装饰消失"，不会出现错位。 */
+        .section-head h2{position:relative; padding-left:12px}
+        .section-head h2::before{content:""; position:absolute; left:0; top:50%;
+            transform:translateY(-50%); width:3px; height:14px; border-radius:2px;
+            background:linear-gradient(180deg,var(--cyan),var(--indigo))}
+        /* 区块顶部那道渐变线加一层向下扩散的辉光，暗色下尤其明显 */
+        .section::after{content:""; position:absolute; left:16px; right:16px; top:0; height:1px;
+            pointer-events:none;
+            box-shadow:0 0 12px 1px var(--focus-shadow)}
+        .sboard-card:hover{border-color:var(--line-strong); transform:translateY(-2px);
+            box-shadow:var(--card-shadow), 0 0 0 1px var(--focus-shadow)}
+        .sb-ports{letter-spacing:.3px}
+        .nav-item.active{box-shadow:inset 0 0 22px -8px var(--focus-shadow)}
+        /* 表格表头：等宽小字 + 字母间距，仪表感 */
+        th{font-size:12px; letter-spacing:.6px; text-transform:uppercase}
+        /* 主按钮的霓虹辉光只在悬停时出现，静态下保持克制 */
+        .btn-primary:hover{box-shadow:0 6px 18px -4px var(--focus-shadow)}
+        code,.sb-ports,.logbox{font-variant-ligatures:none}
+
         </style>
+
+        <!-- 主题模板库：后端把当前模板的 CSS 变量内联进来（含 light / dark 两版），
+             首屏即生效、不会先白屏再换肤。切模板时由 JS 改写本标签的内容。 -->
+        <style id="uiThemeVars">{{ ui_theme_css|safe }}</style>
 </head>
-<body>
+<body data-theme="{{ ui_theme|default('tech', true) }}" data-mode="{{ ui_mode|default('light', true) }}">
     <input type="checkbox" id="nav-toggle" class="nav-toggle-cb">
     <a class="skip-link" href="#pageDashboard" data-i18n="a11y.skip">跳到主内容</a>
     <div id="kbHelp" class="kb-help" style="display:none" role="dialog" aria-modal="true" aria-label="Keyboard shortcuts">
@@ -1086,6 +1132,17 @@ dashboard_pwd = 改成更复杂的</pre>
                 </div>
 
             </div>
+
+            <div class="section" id="sec-theme">
+                <div class="section-head"><h2 data-i18n="sec.theme">界面主题</h2>
+                    <span class="sub-note" id="themeCurName">—</span>
+                </div>
+                <p class="hint" style="margin-bottom:10px;" data-i18n="sec.theme.hint">
+                    选择一套配色模板，深浅两色仍由右上角的 ☀/☾ 按钮切换。模板与明暗都会记住，重启后依然生效。
+                </p>
+                <div class="theme-grid" id="themeGrid"></div>
+            </div>
+
             <div class="section" id="sec-daemon">
                 <div class="section-head"><h2 data-i18n="sec.daemon">守护与告警</h2></div>
                 <p class="hint" style="margin-bottom:10px;">
@@ -1279,7 +1336,7 @@ dashboard_pwd = 改成更复杂的</pre>
                     <div class="form-row">
                         <div class="form-group">
                             <label>服务端地址:</label>
-                            <input type="text" id="serverAddr" placeholder="如: 114.132.239.35" value="114.132.239.35">
+                            <input type="text" id="serverAddr" placeholder="如: 127.0.0.1 或服务端公网 IP" value="127.0.0.1">
                         </div>
                         <div class="form-group">
                             <label>服务端端口:</label>
@@ -1507,13 +1564,27 @@ dashboard_pwd = 改成更复杂的</pre>
                         <div class="form-group">
                             <textarea id="lhIpAllow" disabled placeholder="127.0.0.1&#10;192.168.1.0/24&#10;10.0.0.5"></textarea>
                         </div>
-                        <p class="hint" data-i18n="lh.ipwl.hint">每行一个 IP 或 CIDR（如 192.168.1.0/24）；留空 = 不限制。误配后可仍访问本页修正。</p>
+                        <div class="lh-netbox">
+                            <p class="lh-netline lh-warnline" id="lhIpWarn" style="display:none">⚠ <span data-i18n="lh.ipwl.warn">当前 IP 不在名单内，保存后你将无法登录面板。请先把自己加进来，或改用本机地址访问本页。</span></p>
+                            <p class="lh-netline"><span data-i18n="lh.ipwl.from">当前登录来源</span>：<code id="lhClientIp">—</code></p>
+                            <p class="lh-netline"><span data-i18n="lh.ipwl.lan">本机可用地址</span>：<span id="lhLanIps"></span>
+                                <button id="lhIpRefreshBtn" class="btn btn-secondary btn-sm" type="button" data-i18n="lh.ipwl.refresh">刷新</button>
+                            </p>
+                        </div>
+                        <p class="hint" data-i18n="lh.ipwl.hint">每行一个 IP 或 CIDR（如 192.168.1.0/24）；留空 = 不限制。误配后仍可访问本页修正。</p>
                     </div>
 
                     <div class="lh-card lh-card-totp">
                         <h3 class="sub-h" data-i18n="lh.totp">③ TOTP 二次验证</h3>
                         <p class="lh-totp-status" id="lhTotpStatus">—</p>
                         <div id="lhTotpOff" style="display:none">
+                            <p class="hint" id="lhTotpHint" style="display:none" data-i18n="lh.totp.reusehint">密钥仍保留在配置里：输入 Authenticator 当前显示的 6 位码即可重新开启，无需重新扫码。</p>
+                            <div id="lhTotpReuseBox" style="display:none" class="lh-totp-box">
+                                <div class="form-group"><label data-i18n="lh.totp.code">动态验证码</label>
+                                    <input type="text" id="lhTotpReuseCode" inputmode="numeric" maxlength="6" placeholder="123456">
+                                    <button id="lhTotpReuseBtn" class="btn btn-success" type="button" data-i18n="lh.totp.reuse">重新启用</button>
+                                </div>
+                            </div>
                             <button id="lhTotpSetupBtn" class="btn btn-primary" type="button" data-i18n="lh.totp.gen">生成并启用</button>
                             <p class="hint" data-i18n="lh.totp.genhint">点击后生成密钥，用 Authenticator 等 App 扫描或手动输入，再填入 6 位动态码确认启用。</p>
                             <div id="lhTotpSetupBox" style="display:none" class="lh-totp-box">
@@ -1888,6 +1959,7 @@ const I18N = {
         'dl.target': '目标平台', 'dl.target.current': '当前平台（下载并安装）', 'dl.verify': '下载后校验 SHA256',
         'sec.audit': '操作审计', 'sec.proxies': '代理编辑器', 'sec.templates': '配置模板库',
         'sec.logs': '运行日志', 'sec.watchdog': '进程自愈守护', 'sec.daemon': '守护与告警', 'sub.watchdog': '进程自愈',
+        'sec.theme': '界面主题', 'sec.theme.hint': '选择一套配色模板，深浅两色仍由右上角的 ☀/☾ 按钮切换。模板与明暗都会记住，重启后依然生效。',
         'btn.start': '启动', 'btn.stop': '停止', 'btn.restart': '重启', 'btn.stopall': '全部停止',
         'btn.save': '保存', 'btn.load': '加载', 'btn.refresh': '刷新', 'btn.test': '测试',
         'btn.apply': '套用模板', 'btn.add': '新增代理', 'btn.edit': '编辑', 'btn.delete': '删除',
@@ -1940,10 +2012,16 @@ const I18N = {
         'lh.ratelimit.hint': '同一 IP 在窗口内连续失败达到上限后，将被临时锁定一段时间。',
         'lh.ipwl': '② 登录 IP 白名单', 'lh.ipwl.on': '仅允许名单内的 IP 登录',
         'lh.ipwl.hint': '每行一个 IP 或 CIDR（如 192.168.1.0/24）；留空 = 不限制。误配后仍可访问本页修正。',
+        'lh.ipwl.from': '当前登录来源', 'lh.ipwl.lan': '本机可用地址',
+        'lh.ipwl.refresh': '刷新', 'lh.ipwl.add': '加入白名单', 'lh.ipwl.net': '加入整个网段',
+        'lh.ipwl.nonet': '未检测到局域网地址（本机可能只有一个回环网卡）',
+        'lh.ipwl.added': '已加入，记得点「保存」', 'lh.ipwl.dup': '该地址已在白名单中',
+        'lh.ipwl.warn': '当前 IP 不在名单内，保存后你将无法登录面板。请先把自己加进来，或改用本机地址访问本页。',
         'lh.totp': '③ TOTP 二次验证', 'lh.totp.gen': '生成并启用', 'lh.totp.genhint': '点击后生成密钥，用 Authenticator 等 App 扫描或手动输入，再填入 6 位动态码确认启用。',
         'lh.totp.secret': '密钥（手动输入用）', 'lh.totp.uri': 'otpauth 链接（扫码用）', 'lh.totp.code': '动态验证码',
         'lh.totp.enable': '确认启用', 'lh.totp.disable': '关闭 TOTP',
         'lh.totp.onhint': '已启用：每次登录需额外输入 6 位动态码。',
+        'lh.totp.reuse': '重新启用', 'lh.totp.reusehint': '密钥仍保留在配置里：输入 Authenticator 当前显示的 6 位码即可重新开启，无需重新扫码。',
         'lh.totp.status.off': '未启用', 'lh.totp.status.on': '已启用', 'lh.totp.saved': '登录加固设置已保存',
         'lh.totp.enabled': 'TOTP 二次验证已启用', 'lh.totp.disabled': 'TOTP 二次验证已关闭',
         'lh.ipwl.enabled': 'IP 白名单已启用',
@@ -1968,6 +2046,7 @@ const I18N = {
         'dl.target': 'Target platform', 'dl.target.current': 'Current platform (download & install)', 'dl.verify': 'Verify SHA256 after download',
         'sec.audit': 'Audit Log', 'sec.proxies': 'Proxy Editor', 'sec.templates': 'Templates',
         'sec.logs': 'Logs', 'sec.watchdog': 'Self-healing Watchdog', 'sec.daemon': 'Guard & Alerts', 'sub.watchdog': 'Self-healing',
+        'sec.theme': 'Interface Theme', 'sec.theme.hint': 'Pick a colour template; light/dark still toggles from the ☀/☾ button at the top right. Both the template and the mode are remembered across restarts.',
         'btn.start': 'Start', 'btn.stop': 'Stop', 'btn.restart': 'Restart', 'btn.stopall': 'Stop All',
         'btn.save': 'Save', 'btn.load': 'Load', 'btn.refresh': 'Refresh', 'btn.test': 'Test',
         'btn.apply': 'Apply', 'btn.add': 'Add Proxy', 'btn.edit': 'Edit', 'btn.delete': 'Delete',
@@ -2028,6 +2107,11 @@ const I18N = {
         'lh.ipwl': '② Login IP allowlist',
         'lh.ipwl.on': 'Only allow listed IPs to log in',
         'lh.ipwl.hint': 'One IP or CIDR per line (e.g. 192.168.1.0/24); empty = no restriction. The security page stays reachable so you can fix a wrong entry.',
+        'lh.ipwl.from': 'Your current source IP', 'lh.ipwl.lan': 'Addresses of this machine',
+        'lh.ipwl.refresh': 'Refresh', 'lh.ipwl.add': 'Add to allowlist', 'lh.ipwl.net': 'Add whole subnet',
+        'lh.ipwl.nonet': 'No LAN address detected (this machine may have only a loopback interface)',
+        'lh.ipwl.added': 'Added; remember to hit Save', 'lh.ipwl.dup': 'Already in the allowlist',
+        'lh.ipwl.warn': 'Your IP is not on the list — saving will lock you out. Add yourself first, or open this page from localhost.',
         'lh.ipwl.enabled': 'IP allowlist enabled',
 
         'lh.save': 'Save hardening settings',
@@ -2043,6 +2127,7 @@ const I18N = {
         'lh.totp.code': 'Verification code', 'lh.totp.code.ph': '6 digits', 'lh.totp.err': 'Code incorrect, please retry.',
         'lh.totp.enable': 'Confirm & enable', 'lh.totp.disable': 'Turn off TOTP',
         'lh.totp.onhint': 'Enabled: a 6-digit code is now required on every login.',
+        'lh.totp.reuse': 'Re-enable', 'lh.totp.reusehint': 'The secret is still stored: enter the 6-digit code currently shown in your authenticator to turn 2FA back on — no need to re-scan.',
         'lh.totp.status.off': 'Disabled', 'lh.totp.status.on': 'Enabled',
         'lh.totp.saved': 'Login hardening settings saved',
         'lh.totp.enabled': 'TOTP enabled', 'lh.totp.disabled': 'TOTP disabled',
@@ -2324,7 +2409,7 @@ var ZH_EN_STATIC = {
     "配置类型": "Config type",
     "配置内容将显示在这里...": "Config content will appear here...",
     "快照配置类型": "Snapshot config type",
-    "如: 114.132.239.35": "e.g. 114.132.239.35",
+    "如: 127.0.0.1 或服务端公网 IP": "e.g. 127.0.0.1 or the server's public IP",
     "如: 7000": "e.g. 7000",
     "与服务端token保持一致": "must match the server token",
     "如: web": "e.g. web",
@@ -2621,12 +2706,18 @@ class FRPManagerUI {
         if (box) box.style.opacity = this.lhRateLimit.checked ? '1' : '.45';
     }
 
-    renderTotpState(enabled) {
+    renderTotpState(enabled, hasSecret) {
         if (this.lhTotpOff) this.lhTotpOff.style.display = enabled ? 'none' : '';
         if (this.lhTotpOn) this.lhTotpOn.style.display = enabled ? '' : 'none';
         if (this.lhTotpStatus) this.lhTotpStatus.textContent = enabled ? t('lh.totp.status.on') : t('lh.totp.status.off');
         if (this.lhTotpSetupBox) this.lhTotpSetupBox.style.display = 'none';
         if (this.lhTotpCode) this.lhTotpCode.value = '';
+        // 密钥留着没删 → 提供「用旧密钥重开」，省掉重新扫码这一步
+        const canReuse = !enabled && !!hasSecret;
+        if (this.lhTotpReuseBox) this.lhTotpReuseBox.style.display = canReuse ? '' : 'none';
+        if (this.lhTotpHint) this.lhTotpHint.style.display = canReuse ? '' : 'none';
+        if (this.lhTotpReuseCode && !canReuse) this.lhTotpReuseCode.value = '';
+        if (this.lhTotpReuseCode) this.lhTotpReuseCode.disabled = !canReuse;
     }
 
     async loadLoginHarden() {
@@ -2647,8 +2738,79 @@ class FRPManagerUI {
             }
             if (this.lhIpAllowOn) this.lhIpAllowOn.checked = on;
             if (this.lhTotpSetupBtn) this.lhTotpSetupBtn.disabled = false;
-            this.renderTotpState(!!d.totp_enabled);
+            this.renderTotpState(!!d.totp_enabled, d.totp_has_secret);
+            this.renderAllowlistIps(d.client_ip, d.lan_ips, d.ip_allowlist, d.client_allowed);
         } catch (e) { /* 登录保护关闭时该端点不可达，忽略 */ }
+    }
+
+    /** 把「本机有哪些地址」渲染成可一键加入白名单的按钮。 */
+    renderAllowlistIps(clientIp, lanIps, allowlist, clientAllowed) {
+        if (this.lhClientIp) this.lhClientIp.textContent = clientIp || '—';
+        // 防呆：名单非空却不含当前来源 IP —— 一保存就会把自己关在外面，必须提前说清
+        if (this.lhIpWarn) {
+            this.lhIpWarn.style.display = (allowlist && String(allowlist).trim()
+                                            && clientAllowed === false) ? '' : 'none';
+        }
+        const box = this.lhLanIps;
+        if (!box) return;
+        box.textContent = '';
+        const list = Array.isArray(lanIps) ? lanIps : [];
+        if (!list.length) {
+            const s = document.createElement('span');
+            s.className = 'lh-nonet';
+            s.textContent = t('lh.ipwl.nonet');
+            box.appendChild(s);
+            return;
+        }
+        list.forEach(ip => {
+            const wrap = document.createElement('span');
+            wrap.className = 'lh-ipchip';
+            const c = document.createElement('code');
+            c.textContent = ip;
+            // data-i18n 不能省：这几个按钮是 JS 生成的，没有它切换语言时
+            // 文案不会跟着变（applyLang 只会重扫带该属性的元素）。
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'btn btn-secondary btn-sm';
+            b.setAttribute('data-i18n', 'lh.ipwl.add');
+            b.textContent = t('lh.ipwl.add');
+            b.onclick = () => this.addIpToAllowlist(ip);
+            const bn = document.createElement('button');
+            bn.type = 'button';
+            bn.className = 'btn btn-secondary btn-sm';
+            bn.setAttribute('data-i18n', 'lh.ipwl.net');
+            bn.textContent = t('lh.ipwl.net');
+            bn.onclick = () => this.addIpToAllowlist(this.cidr24(ip));
+            wrap.appendChild(c);
+            wrap.appendChild(b);
+            wrap.appendChild(bn);
+            box.appendChild(wrap);
+            box.appendChild(document.createTextNode(' '));
+        });
+    }
+
+    /** IP → /24 网段；填整个网段比填单个 IP 稳妥（手机、其他设备不会被挡住）。 */
+    cidr24(ip) {
+        const m = String(ip || '').match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.\d{1,3}$/);
+        return m ? `${m[1]}.${m[2]}.${m[3]}.0/24` : ip;
+    }
+
+    /** 往白名单追加一条（去重、自动勾选开关）。 */
+    addIpToAllowlist(entry) {
+        const ta = this.lhIpAllow;
+        if (!ta) return;
+        const item = String(entry || '').trim();
+        if (!item) return;
+        const cur = String(ta.value || '').split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+        if (cur.indexOf(item) >= 0) {
+            this.showMessage(t('lh.ipwl.dup'), 'info');
+            return;
+        }
+        cur.push(item);
+        ta.value = cur.join('\n');
+        if (this.lhIpAllowOn) this.lhIpAllowOn.checked = true;
+        ta.disabled = false;
+        this.showMessage(t('lh.ipwl.added'), 'success');
     }
 
     async saveLoginHarden() {
@@ -2716,6 +2878,30 @@ class FRPManagerUI {
             this.showMessage(t('启用失败', 'Failed to enable'), 'error');
         } finally {
             this.lhTotpEnableBtn.disabled = false;
+        }
+    }
+
+    /** 停用后不重新扫码：拿已保存的密钥，输一次当前动态码就重开。 */
+    async reuseTotp() {
+        if (!this.lhTotpReuseBtn) return;
+        const code = this.lhTotpReuseCode ? String(this.lhTotpReuseCode.value || '').trim() : '';
+        if (!code) { this.showMessage(t('lh.totp.err'), 'error'); return; }
+        this.lhTotpReuseBtn.disabled = true;
+        try {
+            // 故意不带 secret —— 后端据此走「用已保存密钥」分支
+            const resp = await fetch('/api/auth/totp/enable', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({code: code})
+            });
+            const d = await resp.json();
+            const msg = d.message || (d.success ? t('lh.totp.enabled') : t('启用失败', 'Failed to enable'));
+            this.showMessage(msg, d.success ? 'success' : 'error');
+            if (d.success) this.loadLoginHarden();
+        } catch (e) {
+            this.showMessage(t('启用失败', 'Failed to enable'), 'error');
+        } finally {
+            this.lhTotpReuseBtn.disabled = false;
         }
     }
 
@@ -2807,34 +2993,182 @@ class FRPManagerUI {
     }
 
     initTheme() {
-        // 默认白色（浅色）主题；用户切换后存入 localStorage
-        const saved = localStorage.getItem('frp-theme') || 'light';
-        document.body.dataset.theme = saved;
+        // data-theme / data-mode 已由服务端注入首屏（权威值，避免闪白）。
+        // 这里只做两件事：迁移老版本遗留的明暗偏好、绑定切换按钮。
+        //
+        // 迁移背景：v1.16.x 及以前把明暗直接存在 data-theme 上（值 = light / dark），
+        // v1.17 起 data-theme 改存「模板 id」，明暗挪到 data-mode。不迁移的话，
+        // 老用户升级后会发现夜间模式自己变回白天了。
+        const legacy = localStorage.getItem('frp-theme');
+        if (legacy === 'dark' || legacy === 'light') {
+            document.body.dataset.mode = legacy;
+            localStorage.removeItem('frp-theme');
+            // 顺手把偏好写回服务端，下次进页面就是服务端直接注入
+            fetch('/api/ui/theme', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({mode: legacy})
+            }).catch(() => {});
+        }
+        if (!document.body.dataset.theme) document.body.dataset.theme = 'tech';
+        if (!document.body.dataset.mode) document.body.dataset.mode = 'light';
+
         const btn = document.getElementById('themeToggle');
         const sync = () => {
             if (!btn) return;
-            const dark = document.body.dataset.theme === 'dark';
+            const dark = document.body.dataset.mode === 'dark';
             const ic = btn.querySelector('.tb-theme-ic');
             const tx = btn.querySelector('.tb-theme-txt');
             if (ic) ic.textContent = dark ? '☾' : '☀';
             if (tx) tx.textContent = dark ? tt("深色", "Dark") : tt("浅色", "Light");
             btn.title = dark ? tt("点击切换为浅色主题", "Switch to light theme") : tt("点击切换为深色主题", "Switch to dark theme");
         };
+        this.syncThemeBtn = sync;
         sync();
         if (btn) {
             btn.addEventListener('click', () => {
-                const next = (document.body.dataset.theme === 'dark') ? 'light' : 'dark';
-                document.body.dataset.theme = next;
-                localStorage.setItem('frp-theme', next);
-                sync();
+                const next = (document.body.dataset.mode === 'dark') ? 'light' : 'dark';
+                this.setUiTheme(null, next);
             });
         }
+        // 主题模板库：进设置页时才拉，不占首屏请求
+        if (this.themeGrid) this.loadUiThemes();
         // 语言切换：点击在 中文 / English 之间切换
         if (this.langToggle) {
             this.langToggle.addEventListener('click', () => this.toggleLang());
         }
     }
     
+    // ===== 界面主题模板库（v1.17.0）=====
+
+    /** 拉取模板库。只在进设置页时调一次，之后本地切换不再请求后端。 */
+    async loadUiThemes() {
+        try {
+            const resp = await fetch('/api/ui/themes');
+            const d = await resp.json();
+            if (!d.success) return;
+            this.uiThemes = d.themes || [];
+            if (d.theme) document.body.dataset.theme = d.theme;
+            if (d.mode) document.body.dataset.mode = d.mode;
+            this.applyThemeVars(document.body.dataset.theme);
+            if (this.syncThemeBtn) this.syncThemeBtn();
+            this.renderUiThemes();
+        } catch (e) {
+            // 拿不到模板库不影响使用：首屏已内联了当前模板，只是不能切换
+            console.error('load themes failed', e);
+        }
+    }
+
+    /** 把某套模板的变量写成 CSS 规则文本。 */
+    themeCssText(themeId) {
+        const t = (this.uiThemes || []).find(x => x.id === themeId);
+        if (!t || !t.vars) return '';
+        const build = (vars, sel) =>
+            sel + '{' + Object.keys(vars).map(k => k + ':' + vars[k]).join(';') + '}';
+        return build(t.vars.light, 'body[data-theme="' + themeId + '"]') + '\n' +
+               build(t.vars.dark, 'body[data-theme="' + themeId + '"][data-mode="dark"]');
+    }
+
+    /** 改写 #uiThemeVars 的内容即完成换肤（其余 CSS 全走 var()，不用动）。 */
+    applyThemeVars(themeId) {
+        const el = document.getElementById('uiThemeVars');
+        if (el) el.textContent = this.themeCssText(themeId);
+    }
+
+    /** 切换模板 / 明暗：先本地即时生效，再落盘；落盘失败回滚。
+
+        两个要点，都是被真实测试逼出来的：
+        1) **请求串行化**。换模板与切明暗若同时发出，后一个会用「读到的旧值」
+           覆盖前一个的写入 —— 快速连点就会丢设置。这里排成队列，一个完成再发下一个。
+        2) **每次都发全量**（当前 theme + mode），而不是只发变化的那一项。
+           后端是「读当前值 → 改一个字段 → 整体写回」，只发一项时另一项依赖
+           后端读到的值，一旦并发就会互相踩。
+    */
+    setUiTheme(themeId, mode) {
+        const prevTheme = document.body.dataset.theme;
+        const prevMode = document.body.dataset.mode;
+        if (themeId) {
+            document.body.dataset.theme = themeId;
+            this.applyThemeVars(themeId);
+        }
+        if (mode) document.body.dataset.mode = mode;
+        if (this.syncThemeBtn) this.syncThemeBtn();
+        this.renderUiThemes();
+
+        this._themeQueue = (this._themeQueue || Promise.resolve()).then(async () => {
+            try {
+                const resp = await fetch('/api/ui/theme', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        theme: document.body.dataset.theme,
+                        mode: document.body.dataset.mode
+                    })
+                });
+                const d = await resp.json();
+                if (!d.success) throw new Error(d.message || 'save failed');
+            } catch (e) {
+                document.body.dataset.theme = prevTheme;
+                document.body.dataset.mode = prevMode;
+                this.applyThemeVars(prevTheme);
+                if (this.syncThemeBtn) this.syncThemeBtn();
+                this.renderUiThemes();
+                this.showMessage(tt('主题保存失败', 'Failed to save theme'), 'error');
+            }
+        });
+        return this._themeQueue;
+    }
+
+    /** 渲染模板卡片网格。 */
+    renderUiThemes() {
+        const grid = this.themeGrid;
+        if (!grid) return;
+        const cur = document.body.dataset.theme;
+        const dark = document.body.dataset.mode === 'dark';
+        grid.textContent = '';
+        const curTh = (this.uiThemes || []).find(x => x.id === cur);
+        if (this.themeCurName && curTh) {
+            this.themeCurName.textContent =
+                curTh['name_' + (CURRENT_LANG === 'en' ? 'en' : 'zh')] || cur;
+        }
+        (this.uiThemes || []).forEach(th => {
+            const card = document.createElement('button');
+            card.type = 'button';
+            card.className = 'tplcard' + (th.id === cur ? ' tplcard-on' : '');
+            card.setAttribute('data-i18n-keep', '1');
+            card.setAttribute('aria-pressed', th.id === cur ? 'true' : 'false');
+            card.onclick = () => { if (th.id !== cur) this.setUiTheme(th.id, null); };
+
+            // 预览色块直接取该模板的变量：深浅两种模式各一组，切换时跟着变
+            const sw = document.createElement('span');
+            sw.className = 'tplcard-sw';
+            const v = dark ? (th.vars.dark || {}) : (th.vars.light || {});
+            [(v['--panel'] || '#fff'), (v['--cyan'] || '#0891b2'),
+             (v['--bg'] || '#eee'), (v['--txt'] || '#222')].forEach(c => {
+                const i = document.createElement('i');
+                i.style.background = c;
+                sw.appendChild(i);
+            });
+
+            const meta = document.createElement('span');
+            meta.className = 'tplcard-meta';
+            const nm = document.createElement('strong');
+            nm.textContent = th['name_' + (CURRENT_LANG === 'en' ? 'en' : 'zh')] || th.id;
+            const ds = document.createElement('em');
+            ds.textContent = th['desc_' + (CURRENT_LANG === 'en' ? 'en' : 'zh')] || '';
+            meta.appendChild(nm);
+            meta.appendChild(ds);
+
+            const ck = document.createElement('span');
+            ck.className = 'tplcard-ck';
+            ck.textContent = th.id === cur ? '✓' : '';
+
+            card.appendChild(sw);
+            card.appendChild(meta);
+            card.appendChild(ck);
+            grid.appendChild(card);
+        });
+    }
+
     async loadWebPort() {
         try {
             const response = await fetch('/api/settings');
@@ -2866,6 +3200,10 @@ class FRPManagerUI {
         // Web设置元素
         this.webPort = document.getElementById('webPort');
         this.savePortBtn = document.getElementById('savePortBtn');
+
+        // 界面主题模板库
+        this.themeGrid = document.getElementById('themeGrid');
+        this.themeCurName = document.getElementById('themeCurName');
 
         // 下载镜像 / 进度
         this.dlMirror = document.getElementById('dlMirror');
@@ -3009,10 +3347,18 @@ class FRPManagerUI {
         this.lhLock = document.getElementById('lhLock');
         this.lhIpAllowOn = document.getElementById('lhIpAllowOn');
         this.lhIpAllow = document.getElementById('lhIpAllow');
+        this.lhClientIp = document.getElementById('lhClientIp');
+        this.lhIpWarn = document.getElementById('lhIpWarn');
+        this.lhLanIps = document.getElementById('lhLanIps');
+        this.lhIpRefreshBtn = document.getElementById('lhIpRefreshBtn');
         this.lhSaveBtn = document.getElementById('lhSaveBtn');
         this.lhTotpStatus = document.getElementById('lhTotpStatus');
         this.lhTotpOff = document.getElementById('lhTotpOff');
         this.lhTotpOn = document.getElementById('lhTotpOn');
+        this.lhTotpReuseBox = document.getElementById('lhTotpReuseBox');
+        this.lhTotpReuseCode = document.getElementById('lhTotpReuseCode');
+        this.lhTotpReuseBtn = document.getElementById('lhTotpReuseBtn');
+        this.lhTotpHint = document.getElementById('lhTotpHint');
         this.lhTotpSetupBtn = document.getElementById('lhTotpSetupBtn');
         this.lhTotpSetupBox = document.getElementById('lhTotpSetupBox');
         this.lhTotpSecret = document.getElementById('lhTotpSecret');
@@ -3325,9 +3671,12 @@ class FRPManagerUI {
         if (this.lhSaveBtn) this.lhSaveBtn.addEventListener('click', () => this.saveLoginHarden());
         if (this.lhRateLimit) this.lhRateLimit.addEventListener('change', () => this.toggleLhRateParams());
         if (this.lhIpAllowOn) this.lhIpAllowOn.addEventListener('change', () => { if (this.lhIpAllow) this.lhIpAllow.disabled = !this.lhIpAllowOn.checked; });
+        if (this.lhIpRefreshBtn) this.lhIpRefreshBtn.addEventListener('click', () => this.loadLoginHarden());
         if (this.lhTotpSetupBtn) this.lhTotpSetupBtn.addEventListener('click', () => this.openTotpSetup());
         if (this.lhTotpEnableBtn) this.lhTotpEnableBtn.addEventListener('click', () => this.confirmTotpEnable());
         if (this.lhTotpDisableBtn) this.lhTotpDisableBtn.addEventListener('click', () => this.disableTotp());
+        if (this.lhTotpReuseBtn) this.lhTotpReuseBtn.addEventListener('click', () => this.reuseTotp());
+        if (this.lhTotpReuseCode) this.lhTotpReuseCode.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); this.reuseTotp(); } });
         if (this.lhTotpCopyBtn) this.lhTotpCopyBtn.addEventListener('click', () => this.copyTotpSecret());
         if (this.refreshAuditBtn) this.refreshAuditBtn.addEventListener('click', () => this.loadAudit(true));
         if (this.auditLines) this.auditLines.addEventListener('change', () => this.loadAudit(true));
@@ -5835,6 +6184,13 @@ style.textContent = `
     .lh-params .form-group label { font-size:.8em; color:var(--txt3); margin-bottom:4px; }
     .lh-params .form-group input { width:100%; padding:8px 9px; }
     .lh-card textarea { min-height:84px; width:100%; resize:vertical; font-family:'Courier New',monospace; line-height:1.5; }
+    .lh-netbox { margin:0 0 10px; padding:10px 12px; border:1px dashed var(--line); border-radius:10px; background:var(--panel2); }
+    .lh-netline { font-size:.85em; color:var(--txt2); margin:4px 0; display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+    .lh-warnline { display:block; color:#b26a00; background:#fff6e6; border:1px solid #f3d9a4; border-radius:8px; padding:7px 10px; line-height:1.6; }
+    .lh-netline code { font-family:'Courier New',monospace; color:var(--cyan); font-size:1.05em; }
+    .lh-netbox .btn-sm { padding:2px 8px; font-size:.78em; }
+    .lh-ipchip { display:inline-flex; align-items:center; gap:4px; padding:2px 8px 2px 6px; border:1px solid var(--line); border-radius:999px; background:var(--panel3); }
+    .lh-nonet { color:var(--txt3); font-style:italic; }
     .lh-totp-status { font-size:.9em; margin:2px 0 12px; color:var(--txt2); }
     .lh-totp-box { margin:10px 0; padding:12px; border:1px dashed var(--line); border-radius:10px; background:var(--panel2); }
     .lh-totp-box .fl { display:block; font-size:.82em; color:var(--txt3); margin:8px 0 4px; }

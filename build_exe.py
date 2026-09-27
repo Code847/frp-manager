@@ -1,10 +1,21 @@
 # -*- coding: utf-8 -*-
-"""Windows 单文件 exe 打包脚本（PyInstaller）。
+"""单文件打包脚本（PyInstaller）。
 
 用法::
 
-    python build_exe.py                # --onefile --windowed，产出 dist/FRP-Manager-xxx.exe
-    python build_exe.py --onedir       # 调试用，产出 dist/FRP-Manager-xxx/（启动快、便于排错）
+    python build_exe.py                  # --onefile --windowed，产出 dist/FRP-Manager-xxx
+    python build_exe.py --onedir         # 调试用（启动快、报错 stack 完整）
+    python build_exe.py --list-targets   # 列出可打包的目标平台
+    python build_exe.py --target linux-arm64   # 显式指定目标（须与当前机器一致）
+
+关于 Linux / macOS 目标（重要）
+------------------------------
+PyInstaller **不支持交叉编译** —— 它把当前 Python 解释器打进产物，
+所以在 Windows 上永远打不出 Linux 的 ELF，反之亦然；同理 amd64 机器打不出 arm64 包。
+
+因此 `--target` 不是"想打哪个就打哪个"，而是**显式声明要带哪一组 frp 二进制**，
+并在与当前机器不匹配时**直接报错退出**，绝不静默产出跑不起来的东西。
+要出 Linux 包，请在 Linux 主机上运行本脚本，或交给 CI 矩阵（见 .github/workflows）。
 
 为什么需要一份「干净的打包资源」
 ----------------------------------
@@ -27,6 +38,7 @@
 """
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -36,35 +48,105 @@ import time
 APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 # 默认单文件；--onedir 用于调试（启动快、报错 stack 完整）
 MODE_ONEFILE = '--onedir' not in sys.argv
+
+# platform.machine() -> frp 官方发布包里的架构后缀
+ARCH_MAP = {
+    'x86_64': 'amd64', 'amd64': 'amd64', 'x64': 'amd64', 'em64t': 'amd64',
+    'aarch64': 'arm64', 'arm64': 'arm64', 'armv8l': 'arm64', 'armv8': 'arm64',
+    'armv7l': 'arm', 'armv7': 'arm', 'armv6l': 'arm', 'armv6': 'arm', 'arm': 'arm',
+    'i386': '386', 'i486': '386', 'i586': '386', 'i686': '386', 'x86': '386',
+}
+
+# 可打包的目标平台。键 = --target 可填的值，值 = 展示名。
+BUILD_TARGETS = (
+    ('windows_amd64', 'Windows x86_64'),
+    ('windows_arm64', 'Windows ARM64'),
+    ('windows_386', 'Windows 32-bit'),
+    ('linux_amd64', 'Linux x86_64'),
+    ('linux_arm64', 'Linux ARM64'),
+    ('linux_arm', 'Linux ARMv7'),
+    ('linux_386', 'Linux 32-bit'),
+    ('darwin_amd64', 'macOS x86_64'),
+    ('darwin_arm64', 'macOS Apple Silicon'),
+)
+
+
+def _arg_value(flag):
+    """取 --flag value 形式的值；写成 --flag=value 也能识别。"""
+    argv = sys.argv[1:]
+    for i, a in enumerate(argv):
+        if a == flag:
+            return argv[i + 1] if i + 1 < len(argv) else None
+        if a.startswith(flag + '='):
+            return a.split('=', 1)[1]
+    return None
+
+
+# 连字符与下划线都接受：CLI 习惯打 --target linux-arm64，
+# 而内部（以及 frp 官方包名）用的是 linux_arm64。
+TARGET_ARG = (_arg_value('--target') or 'auto').strip().lower().replace('-', '_')
+
 if any(a in ('-h', '--help') for a in sys.argv[1:]):
     print(__doc__)
     sys.exit(0)
 
-# frp 二进制候选（按本机架构优先顺序排列，取第一个真实存在的一组）
-FRP_BINARY_CANDIDATES = {
-    'win32': ['frpc_windows_amd64.exe', 'frps_windows_amd64.exe'],
-    # Linux 常见 machine 名：aarch64(ARM) / x86_64、amd64(Amd64)
-    'linux': ['frpc_linux_arm64', 'frps_linux_arm64',
-              'frpc_linux_amd64', 'frps_linux_amd64'],
-}
-
-ARM_MACHINES = {'arm64', 'aarch64', 'armv7l', 'armv6l'}
+if '--list-targets' in sys.argv[1:]:
+    print('可选 --target（须与当前机器一致，PyInstaller 不支持交叉编译）：')
+    for k, label in BUILD_TARGETS:
+        print('  %-16s %s' % (k, label))
+    print('  %-16s %s' % ('auto', '按当前机器自动判断（默认）'))
+    sys.exit(0)
 
 
-def pick_frp_binaries():
-    """按当前平台与架构挑选要打包的 frp 二进制，返回 (client, server) 或 None。"""
-    key = 'win32' if sys.platform.startswith('win') else 'linux'
-    machine = (platform.machine() or '').lower()
-    names = FRP_BINARY_CANDIDATES[key]
-    # ARM 机器先看 arm 组，否则先看 amd64 组（linux 有两组，win32 只有一组）
-    if key == 'linux':
-        order = [0, 2] if machine in ARM_MACHINES else [2, 0]
+def _current_target():
+    """当前机器对应的目标串，如 windows_amd64 / linux_arm64。"""
+    s = sys.platform
+    if s.startswith('win'):
+        sysname = 'windows'
+    elif s.startswith('linux'):
+        sysname = 'linux'
+    elif s.startswith('darwin'):
+        sysname = 'darwin'
     else:
-        order = [0]
-    for i in order:
-        pair = (names[i], names[i + 1])
-        if all(os.path.isfile(os.path.join(APP_ROOT, 'bin', n)) for n in pair):
-            return pair
+        sysname = re.sub(r'[^a-z0-9]', '', s.lower())
+    m = (platform.machine() or '').lower()
+    arch = ARCH_MAP.get(m, m or 'unknown')
+    return '%s_%s' % (sysname, arch)
+
+
+def _binary_names(target):
+    """目标串 -> (frpc 文件名, frps 文件名)，按 frp 官方命名规则推导。"""
+    sysname, _, arch = target.partition('_')
+    ext = '.exe' if sysname == 'windows' else ''
+    return ('frpc_%s_%s%s' % (sysname, arch, ext),
+            'frps_%s_%s%s' % (sysname, arch, ext))
+
+
+def resolve_target():
+    """确定目标平台并在不匹配时**报错退出** —— 绝不静默产出跑不起来的产物。"""
+    cur = _current_target()
+    if TARGET_ARG in ('auto', '', None):
+        return cur
+    known = dict(BUILD_TARGETS)
+    if TARGET_ARG not in known:
+        print('[ERROR] 未知目标平台: %s' % TARGET_ARG)
+        print('        可选: auto, ' + ', '.join(k for k, _ in BUILD_TARGETS))
+        print('        （python build_exe.py --list-targets 可列出全部）')
+        sys.exit(2)
+    if TARGET_ARG != cur:
+        print('[ERROR] 目标平台 %s 与当前机器 %s 不一致。' % (TARGET_ARG, cur))
+        print('        PyInstaller 不支持交叉编译：它把当前 Python 解释器打进产物，')
+        print('        所以在 %s 上打不出 %s 的可执行文件。' % (cur, TARGET_ARG))
+        print('        请在该目标平台的机器上执行本脚本，或交给 CI 矩阵构建。')
+        sys.exit(2)
+    return TARGET_ARG
+
+
+def pick_frp_binaries(target):
+    """按目标平台挑选要打包的 frp 二进制，返回 (client, server) 或 None。"""
+    pair = _binary_names(target)
+    if all(os.path.isfile(os.path.join(APP_ROOT, 'bin', n)) for n in pair):
+        return pair
     return None
 
 
@@ -97,12 +179,15 @@ def stage_platform_binaries(pair):
 
 
 def main():
+    target = resolve_target()
+    is_windows = target.startswith('windows')
     timestamp = time.strftime('%Y%m%d_%H%M%S')
-    output_name = 'FRP-Manager-%s' % timestamp
+    # 产物名带平台：同一台机器上不会互相覆盖，分发时也不会拿错
+    output_name = 'FRP-Manager-%s-%s' % (target, timestamp)
     dist_path = os.path.join(APP_ROOT, 'dist')
 
     # 平台化资源暂存目录（打包完删除，不留在项目里）
-    pair = pick_frp_binaries()
+    pair = pick_frp_binaries(target)
     cfg_stage = stage_clean_configs()
     bin_stage = stage_platform_binaries(pair) if pair else None
     if not pair:
@@ -113,11 +198,15 @@ def main():
     def add_data(src, dst):
         return ['--add-data', '%s%s%s' % (src, sep, dst)]
 
+    # --windowed 只给 Windows：Linux 服务器大多是 headless（systemd / ssh），
+    # 隐藏控制台后一旦起不来就没有任何输出可查，等于自断排错路径。
+    windowed = MODE_ONEFILE and is_windows
+
     cmd = [
         sys.executable, '-m', 'PyInstaller',
         '--name', output_name,
         '--onefile' if MODE_ONEFILE else '--onedir',
-        '--windowed' if MODE_ONEFILE else '--console',
+        '--windowed' if windowed else '--console',
         '--distpath', dist_path,
         '--workpath', os.path.join(APP_ROOT, 'build'),
         '--specpath', os.path.join(APP_ROOT, 'build'),
@@ -141,7 +230,9 @@ def main():
         '--hidden-import', 'click',
         '--hidden-import', 'itsdangerous',
         '--hidden-import', 'blinker',
-        # 托盘：pystray 依赖 Pillow，仅 Windows 桌面需要
+        # gzip：响应压缩在 after_request 里 import，PyInstaller 静态分析可能漏掉
+        '--hidden-import', 'gzip',
+        # 托盘：pystray 依赖 Pillow，仅桌面平台需要（headless Linux 装了也没用）
         '--hidden-import', 'pystray',
         '--hidden-import', 'PIL',
         '--noconfirm',
@@ -149,20 +240,22 @@ def main():
         os.path.join(APP_ROOT, 'main.py'),
     ]
 
-    print('[INFO] 平台          : %s (%s)' % (sys.platform, platform.machine()))
+    print('[INFO] 目标平台      : %s（当前机器 %s / %s）'
+          % (target, sys.platform, platform.machine()))
     print('[INFO] frp 二进制    : %s' % (
         ', '.join(os.path.join('bin', n) for n in (pair or ())) or '未包含'))
     print('[INFO] configs 种子  : 仅 configs/README.md（干净模板）')
     print('[INFO] 打包模式      : %s' % (
-        '--onefile --windowed' if MODE_ONEFILE else '--onedir --console'))
+        ('--onefile' if MODE_ONEFILE else '--onedir')
+        + (' --windowed' if windowed else ' --console')))
     print('[INFO] Python        : %s' % sys.executable)
 
+    ext = '.exe' if (is_windows and MODE_ONEFILE) else ('/' if not MODE_ONEFILE else '')
     stage_dirs = [cfg_stage] + ([bin_stage] if bin_stage else [])
     try:
         result = subprocess.run(cmd, cwd=APP_ROOT)
         if result.returncode == 0:
-            print('[SUCCESS] 构建完成: dist/%s%s' % (
-                output_name, '.exe' if MODE_ONEFILE else '/'))
+            print('[SUCCESS] 构建完成: dist/%s%s' % (output_name, ext))
         else:
             print('[ERROR] PyInstaller 退出码 %s' % result.returncode)
         return result.returncode
